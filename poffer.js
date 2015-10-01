@@ -122,10 +122,10 @@ var handleOps = function(a) {
 				r.splice(index, 1, new Expr.Name(op.name));	
 			} else if(!r[index - 1]) {
 				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index, 2, new Expr.PApp(new Expr.Name(op.name), r[index + 1]));
+				r.splice(index, 2, new Expr.PApp(new Expr.Name(op.name), r[index + 1], true));
 			} else if(!r[index + 1]) {
 				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index - 1, 2, new Expr.PApp(new Expr.Name(op.name), r[index - 1], true));
+				r.splice(index - 1, 2, new Expr.PApp(new Expr.Name(op.name), r[index - 1]));
 			} else r.splice(index - 1, 3, op.call(r[index - 1], r[index + 1]));
 		} else err('operator with invalid args ' + op);
 	}
