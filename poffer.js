@@ -6,9 +6,9 @@
  * TODO
  * 	strings
  * 	map literals
- * 	operators: ?
  * 	think about ,
- * 	comments
+ * 	block comments
+ * 	fix operator precedence!
  */
 var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + ']': '' + x};
 var meth = function(m) {return function(x) {return x[m]()}};
@@ -26,7 +26,7 @@ var ASSIGNMENT = {toString: function() {return ':'}};
 var COND = {toString: function() {return '?'}};
 var NEG = {toString: function() {return '-'}};
 var parse = function(s) {
-	var START = 0, NAME = 1, NUMBER = 2;
+	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3;
 	var state = START, p = [], r = [], t = [], b = [];
 	for(var i = 0, l = s.length; i <= l; i++) {
 		var c = s[i] || '';
@@ -34,6 +34,7 @@ var parse = function(s) {
 		if(state === START) {
 			if(c === '.' && s[i+1] === '.' && s[i+2] === '.') r.push(UNTIL), i += 2;
 			else if(c === '.' && s[i+1] === '.') r.push(TO), i++;
+			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
 			else if(c === '/' && s[i+1] === '/') r.push(PAPPL), i++;
 			else if(c === '\\' && s[i+1] === '\\') r.push(RPAPPL), i++;
 			else if(c === ',') r.push(COMMA);
@@ -65,6 +66,8 @@ var parse = function(s) {
 			if(!/[0-9]/.test(c))
 				r.push(new Expr.Number(t.join(''))), t = [], i--, state = START;
 			else t.push(c);
+		} else if(state === COMMENT) {
+			if(c === '\n' || c === '\r') state = START;
 		}
 		// console.log('>' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 	}
@@ -374,7 +377,7 @@ var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = '[@[1 -2 3 -4 5] map/(?{lt\\0 neg})]'
+var s = '[@[1 -2 3 -4 5] ;; bla blad!@#$DSAD\n map/(?{lt\\0 neg})]'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);
