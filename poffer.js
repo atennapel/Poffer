@@ -5,8 +5,9 @@
  * 
  * TODO
  * 	think about ,
- * 	block comments
  * 	fix operator precedence!
+ * 	operator sectioning
+ * 	operator quoting
  */
 var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + ']': '' + x};
 var meth = function(m) {return function(x) {return x[m]()}};
@@ -26,7 +27,7 @@ var COND = {toString: function() {return '?'}};
 var NEG = {toString: function() {return '-'}};
 
 var parse = function(s) {
-	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4;
+	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4, BLOCKCOMMENT = 5;
 	var state = START, p = [], r = [], t = [], b = [], esc = false;
 	for(var i = 0, l = s.length; i <= l; i++) {
 		var c = s[i] || '';
@@ -45,6 +46,7 @@ var parse = function(s) {
 			else if(c === '/') r.push(PAPP);
 			else if(c === '\\') r.push(RPAPP);
 
+			else if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = BLOCKCOMMENT, i += 2;
 			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
 			else if(c === '"') state = STRING;
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
@@ -71,6 +73,8 @@ var parse = function(s) {
 			else t.push(c);
 		} else if(state === COMMENT) {
 			if(c === '\n' || c === '\r') state = START;
+		} else if(state === BLOCKCOMMENT) {
+			if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = START, i += 2;
 		} else if(state === STRING) {
 			if(esc) t.push(c), esc = false;
 			else if(c === '\\') t.push(c), esc = true;
@@ -80,6 +84,7 @@ var parse = function(s) {
 		// console.log('>' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 	}
 	if(b.length) err('unmatched brackets: ' + b.join(' '));
+	if(state !== START) err('parser error');
 	return new Expr.Group(handleOps(r));
 };
 
@@ -410,7 +415,7 @@ var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = '"asd\\n\\t\\""'
+var s = '[inc;;;asdas!@#!@#;;;inc]'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);
