@@ -23,6 +23,8 @@ var UNTIL = {toString: function() {return '...'}};
 var COMMA = {toString: function() {return ','}};
 var EXTEND = {toString: function() {return '@'}};
 var ASSIGNMENT = {toString: function() {return ':'}};
+var COND = {toString: function() {return '?'}};
+var NEG = {toString: function() {return '-'}};
 var parse = function(s) {
 	var START = 0, NAME = 1, NUMBER = 2;
 	var state = START, p = [], r = [], t = [], b = [];
@@ -35,8 +37,10 @@ var parse = function(s) {
 			else if(c === '/' && s[i+1] === '/') r.push(PAPPL), i++;
 			else if(c === '\\' && s[i+1] === '\\') r.push(RPAPPL), i++;
 			else if(c === ',') r.push(COMMA);
+			else if(c === '-') r.push(NEG);
 			else if(c === ':') r.push(ASSIGNMENT);
 			else if(c === '@') r.push(EXTEND);
+			else if(c === '?') r.push(COND);
 			else if(c === '/') r.push(PAPP);
 			else if(c === '\\') r.push(RPAPP);
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
@@ -82,6 +86,7 @@ var handleOps = function(a) {
 			else if(op === RPAPP) r.push(new Expr.PApp(r.pop(), c, true));
 			else if(op === PAPPL) r.push(new Expr.PAppL(c));
 			else if(op === RPAPPL) r.push(new Expr.PAppL(c, true));
+			else if(op === NEG) r.push(new Expr.Call(new Expr.Name('neg'), [c]));
 			else if(op === TO) r.push(new Expr.Call(new Expr.Name('to'), [r.pop(), c]));
 			else if(op === UNTIL) r.push(new Expr.Call(new Expr.Name('until'), [r.pop(), c]));
 			else if(op === COMMA) r.push(new Expr.Array([r.pop(), c]));
@@ -94,6 +99,9 @@ var handleOps = function(a) {
 			} else if(op === EXTEND) {
 				if(!(c instanceof Expr.Composition)) err('cannot prefix ' + c + ' with @');
 				r.push(new Expr.Array(c.val));
+			} else if(op === COND) {
+				if(!(c instanceof Expr.Fork)) err('cannot prefix ' + c + ' with ?');
+				r.push(new Expr.Cond(c.val));
 			} else err('invalid operator: ' + op);
 			op = null;
 		} else r.push(c);
@@ -184,12 +192,22 @@ Expr.Fork.prototype.optimize = function() {
 	if(this.val.length === 0) return new Expr.Name('id');
 	if(this.val.length === 1) return new Expr.Fork([new Expr.Name('id'), this.val[0], new Expr.Name('id')]).optimize();
 	if(this.val.length % 2 === 0) return new Expr.Fork(this.val.concat([new Expr.Name('id')])).optimize();
-	var a = this.val, fork = new Expr.Name('fork');
-	var c = new Expr.Call(fork, [litc(a[0]).optimize(), litc(a[1]).optimize(), litc(a[2]).optimize()]);
-	for(var i = 3, l = a.length; i < l; i += 2) {
-		var u = litc(a[i]), v = litc(a[i + 1]);
-		c = new Expr.Call(fork, [c.optimize(), u.optimize(), v.optimize()]).optimize();
-	}
+	var a = this.val.map(litc).map(meth('optimize')), fork = new Expr.Name('fork');
+	var c = new Expr.Call(fork, [a[0], a[1], a[2]]);
+	for(var i = 3, l = a.length; i < l; i += 2) c = new Expr.Call(fork, [c, a[i], a[i+1]]);
+	return c.optimize();
+};
+
+Expr.Cond = function(a) {this.val = a};
+Expr.Cond.prototype = Object.create(Expr.Expr.prototype);
+Expr.Cond.prototype.toString = function() {return '?{' + this.val.join(' ') + '}'};
+Expr.Cond.prototype.optimize = function() {
+	if(this.val.length === 0) return new Expr.Name('id');
+	if(this.val.length === 1) return this.val[0].optimize();
+	if(this.val.length % 2 === 0) return new Expr.Cond(this.val.concat([new Expr.Name('id')])).optimize();
+	var a = this.val.map(litc).map(meth('optimize')), cond = new Expr.Name('cond');
+	var c = new Expr.Call(cond, [a[a.length-3], a[a.length-2], a[a.length-1]]);
+	for(var i = a.length - 4; i >= 0; i -= 2) c = new Expr.Call(cond, [a[i-1], a[i], c]);
 	return c.optimize();
 };
 
@@ -289,6 +307,13 @@ Seq.LazySeq.prototype.forEach = function(f) {
 
 var id = function(x) {return x};
 
+var neg = function(x) {return -x};
+var sq = function(x) {return x * x};
+var sqrt = function(x) {return Math.sqrt(x)};
+var abs = function(x) {return Math.abs(x)};
+var floor = function(x) {return Math.floor(x)};
+var ceil = function(x) {return Math.ceil(x)};
+var round = function(x) {return Math.round(x)};
 var inc = function(x) {return x + 1};
 var dec = function(x) {return x - 1};
 var add = function(x, y) {return x + y};
@@ -344,11 +369,12 @@ var pappl = function(f) {return function(x) {return papp(f, x)}};
 var rpappl = function(f) {return function(x) {return rpapp(f, x)}};
 var comp = function(f, g) {return function() {return fn(g)(fn(f).apply(this, arguments))}};
 var fork = function(a, b, c) {return function() {return fn(b)(fn(a).apply(this, arguments), fn(c).apply(this, arguments))}};
+var cond = function(a, b, c) {return function() {return fn(a).apply(this, arguments)? fn(b).apply(this, arguments): fn(c).apply(this, arguments)}};
 var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = 'a: 10 b: 20 [@[a b] app/add]'
+var s = '[@[1 -2 3 -4 5] map/(?{lt\\0 neg})]'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);
