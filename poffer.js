@@ -5,8 +5,6 @@
  * 
  * TODO
  * 	think about ,
- * 	operator sectioning (x*) (*x)
- * 	operator quoting (*)
  * 	operator reversing ~*
  * 	fix assignment :
  * 	REPL options
@@ -113,9 +111,23 @@ var handleOps = function(a) {
 	for(var i = 0, l = o.length; i < l; i++) {
 		var op = o[i], index = r.indexOf(op);
 		if(index === -1) err('cannot find operator ' + op);
-		if(op.args === 1) r.splice(index, 2, op.call(r[index + 1]));
-		else if(op.args === 2) r.splice(index - 1, 3, op.call(r[index - 1], r[index + 1]));
-		else err('operator with invalid args ' + op);
+		if(op.args === 1) {
+			if(!r[index + 1]) {
+				if(!op.name) err('trying to quote unquotable operator ' + op);
+				r.splice(index, 1, new Expr.Name(op.name));	
+			} else r.splice(index, 2, op.call(r[index + 1]));
+		} else if(op.args === 2) {
+			if(!r[index - 1] && !r[index + 1]) {
+				if(!op.name) err('trying to quote unquotable operator ' + op);
+				r.splice(index, 1, new Expr.Name(op.name));	
+			} else if(!r[index - 1]) {
+				if(!op.name) err('trying to quote unquotable operator ' + op);
+				r.splice(index, 2, new Expr.PApp(new Expr.Name(op.name), r[index + 1]));
+			} else if(!r[index + 1]) {
+				if(!op.name) err('trying to quote unquotable operator ' + op);
+				r.splice(index - 1, 2, new Expr.PApp(new Expr.Name(op.name), r[index - 1], true));
+			} else r.splice(index - 1, 3, op.call(r[index - 1], r[index + 1]));
+		} else err('operator with invalid args ' + op);
 	}
 	return r;	
 };
@@ -378,6 +390,7 @@ var not = function(x) {return !x};
 
 var to = function(x, y) {return typeof y === 'function'? new Seq.LazySeq(x, y): new Seq.Range(x, y)};
 var until = function(x, y) {return new Seq.Range(x, y - 1)};
+var pair = function(x, y) {return new Seq.Array([x, y])};
 
 var each = function(f) {return a.forEach(f)};
 var filter = function(f, a) {return a.filter(f)};
