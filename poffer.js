@@ -5,7 +5,6 @@
  * 
  * TODO
  * 	string escapes
- * 	map literals
  * 	think about ,
  * 	block comments
  * 	fix operator precedence!
@@ -104,8 +103,11 @@ var handleOps = function(a) {
 				op = null;
 				break;
 			} else if(op === EXTEND) {
-				if(!(c instanceof Expr.Composition)) err('cannot prefix ' + c + ' with @');
-				r.push(new Expr.Array(c.val));
+				if(c instanceof Expr.Composition) r.push(new Expr.Array(c.val));
+				else if(c instanceof Expr.Fork) r.push(new Expr.Map(c.val));
+				else if(c instanceof Expr.Group)
+					r.push(!c.val? new Expr.Name('id'): new Expr.Call(c.val[0], c.val.slice(1)));
+				else err('cannot prefix ' + c + ' with @');
 			} else if(op === COND) {
 				if(!(c instanceof Expr.Fork)) err('cannot prefix ' + c + ' with ?');
 				r.push(new Expr.Cond(c.val));
@@ -227,12 +229,26 @@ Expr.Cond.prototype.optimize = function() {
 Expr.Array = function(a) {this.val = a};
 Expr.Array.prototype = Object.create(Expr.Expr.prototype);
 Expr.Array.prototype.isLiteral = function() {return true};
-Expr.Array.prototype.toString = function() {return '(' + this.val.join(', ') + ')'};
+Expr.Array.prototype.toString = function() {return '@[' + this.val.join(' ') + ']'};
 Expr.Array.prototype.optimize = function() {
 	return new Expr.Array(this.val.map(meth('optimize')));
 };
 Expr.Array.prototype.toJS = function() {
 	return '[' + this.val.map(meth('toJS')).join(', ') + ']';
+};
+
+Expr.Map = function(a) {this.val = a};
+Expr.Map.prototype = Object.create(Expr.Expr.prototype);
+Expr.Map.prototype.isLiteral = function() {return true};
+Expr.Map.prototype.toString = function() {return '@{' + this.val.join(' ') + '}'};
+Expr.Map.prototype.optimize = function() {
+	return new Expr.Map(this.val.map(meth('optimize')));
+};
+Expr.Map.prototype.toJS = function() {
+	if(this.val.length % 2) err('invalid map, missing value: ' + this);
+	for(var i = 0, r = [], a = this.val, l = a.length; i < l; i += 2)
+		r.push(a[i].toJS() + ': ' + a[i+1].toJS());
+	return '({' + r.join(', ') + '})';
 };
 
 Expr.Let = function(name, arg, body) {this.name = name; this.arg = arg; this.body = body};
@@ -389,7 +405,7 @@ var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = '["asd" index/1]'
+var s = '@(add 1 2)'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);
