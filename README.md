@@ -2,7 +2,7 @@
 Programming language with a focus on point-free (tacit) programming.
 
 # Examples
-```python
+```ruby
 ;; average
 {sum div len}
 
@@ -14,4 +14,16 @@ Programming language with a focus on point-free (tacit) programming.
 
 ;; isPrime
 {//divisible count to/1 eq 2}
+
+;; fizzbuzz
+[
+	1..100
+	? {
+		divisible\15 "FizzBuzz"
+		divisible\3 "Fizz"
+		divisible\5 "Buzz"
+	}
+	join/"\n"
+	log
+] 
 ```

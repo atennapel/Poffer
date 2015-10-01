@@ -195,6 +195,7 @@ Expr.Fork.prototype.optimize = function() {
 
 Expr.Array = function(a) {this.val = a};
 Expr.Array.prototype = Object.create(Expr.Expr.prototype);
+Expr.Array.prototype.isLiteral = function() {return true};
 Expr.Array.prototype.toString = function() {return '(' + this.val.join(', ') + ')'};
 Expr.Array.prototype.optimize = function() {
 	return new Expr.Array(this.val.map(meth('optimize')));
