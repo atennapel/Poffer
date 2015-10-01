@@ -6,8 +6,13 @@
  * TODO
  * 	think about ,
  * 	fix operator precedence!
- * 	operator sectioning
- * 	operator quoting
+ * 	operator sectioning (x*) (*x)
+ * 	operator quoting (*)
+ * 	operator reversing ~*
+ * 	REPL options
+ * 	REPL assignments
+ * 	range with step
+ * 	rangef with multiple start
  */
 var version = '0.0.1';
 
