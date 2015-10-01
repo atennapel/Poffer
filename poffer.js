@@ -1,5 +1,5 @@
 /**
- * Poffer v0.0.1
+ * Poffer
  * point-free programming
  * @author Albert ten Napel
  * 
@@ -9,6 +9,8 @@
  * 	operator sectioning
  * 	operator quoting
  */
+var version = '0.0.1';
+
 var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + ']': '' + x};
 var meth = function(m) {return function(x) {return x[m]()}};
 var err = function(m) {throw new Error(m)};
@@ -296,6 +298,11 @@ Seq.Base.prototype.take = function(n) {
 	n--; this.forEach(function(x, i) {r.push(x); return !n--});
 	return new Seq.Array(r);
 };
+Seq.Base.prototype.collect = function() {
+	var r = [];
+	this.forEach(function(x, i) {r.push(x)});
+	return new Seq.Array(r);
+};
 Seq.Base.prototype.len = function() {
 	var n = 0;
 	this.forEach(function() {n++});
@@ -313,6 +320,7 @@ Seq.Filter.prototype.forEach = function(f) {
 	var fn = this.fn;
 	this.seq.forEach(function(x) {if(fn(x)) return f(x)});
 };
+Seq.Filter.prototype.toString = function() {return 'Filter'};
 
 Seq.Map = function(s, f) {this.seq = s; this.fn = f};
 Seq.Map.prototype = Object.create(Seq.Base.prototype);
@@ -320,6 +328,7 @@ Seq.Map.prototype.forEach = function(f) {
 	var fn = this.fn;
 	this.seq.forEach(function(x) {return f(fn(x))});
 };
+Seq.Map.prototype.toString = function() {return 'Map'};
 
 Seq.Range = function(a, b) {this.a = a; this.b = b};
 Seq.Range.prototype = Object.create(Seq.Base.prototype);
@@ -342,7 +351,8 @@ Seq.LazySeq = function(x, f) {this.start = x; this.fn = f};
 Seq.LazySeq.prototype = Object.create(Seq.Base.prototype);
 Seq.LazySeq.prototype.forEach = function(f) {
 	for(var i = this.start, fn = this.fn, j = 0;; i = fn(i), j++) if(f(i, j)) break;
-}; 
+};
+Seq.LazySeq.prototype.toString = function() {return 'LazySeq'};
 
 var id = function(x) {return x};
 
@@ -398,6 +408,7 @@ var product = function(a) {return a.reduce(mul, 1)};
 var maxl = function(a) {return a.reduce(max, -Number.MAX_VALUE)};
 var minl = function(a) {return a.reduce(min, Number.MAX_VALUE)};
 var take = function(n, a) {return a.take(n)};
+var collect = function(a) {return a.collect()};
 var last = function(a) {return a.last()};
 
 var index = function(i, a) {return a[i]};
@@ -412,18 +423,55 @@ var comp = function(f, g) {return function() {return fn(g)(fn(f).apply(this, arg
 var fork = function(a, b, c) {return function() {return fn(b)(fn(a).apply(this, arguments), fn(c).apply(this, arguments))}};
 var cond = function(a, b, c) {return function() {return fn(a).apply(this, arguments)? fn(b).apply(this, arguments): fn(c).apply(this, arguments)}};
 var app = function(f, a) {return f.apply(this, a)};
+var call = function(f, x) {return f(x)};
+var call2 = function(f, x, y) {return f(x, y)};
 
-///
+//
 
-var s = '[inc;;;asdas!@#!@#;;;inc]'
-console.log('' + s);
-var p = parse(s);
-console.log('' + p);
-var o = p.optimize();
-console.log('' + o);
-var j = o.toJS();
-console.log('' + j);
-var t = Date.now();
-console.log('' + show(eval(j)()));
-console.log((Date.now() - t) + 'ms');
-// 600000 -> 3742ms
+if(typeof global != 'undefined' && global) {
+	// Export
+	// if(module && module.exports) module.exports = Poffer;
+	// Commandline
+	if(require.main === module) {
+		var args = process.argv.slice(2), l = args.length;
+		if(l === 0) {
+			var readline = require('readline').createInterface(process.stdin, process.stdout);
+			// REPL
+			console.log('Poffer v'+version+' REPL');
+			process.stdin.setEncoding('utf8');
+			function input() {
+				readline.question('> ', function(inp) {
+					if(inp.trim()) {
+						try {
+							var p = parse(inp);
+							//console.log('' + p);
+							var o = p.optimize();
+							//console.log('' + o);
+							var j = o.toJS();
+							//console.log('' + j);
+							var t = Date.now();
+							console.log('' + show(eval(j)()));
+							//console.log((Date.now() - t) + 'ms');
+						} catch(error) {
+							console.log('' + error);
+						}
+					}
+					setTimeout(input(), 0);
+				});
+			};
+			input();
+		} else {
+			var _f = args[0];
+			var _t = args[1];
+			if(_f) {
+				var fs = require('fs');
+				fs.readFile(_f, 'ascii', function(e, s) {
+					if(e) console.log('Error: ', e);
+					else if(_t === '--run' || _t === '-r')
+						eval(Nanobe.compile(s));
+					else console.log(Nanobe.compile(s));
+				});
+			}
+		}
+	}
+}
