@@ -19,29 +19,37 @@ var meth = function(m) {return function(x) {return x[m]()}};
 var err = function(m) {throw new Error(m)};
 
 // operators
-var OP = function(c, n, pl, pr, name, call) {
-	return {toString: function() {return c}, args: n, precl: pl, precr: pr, name: name || null, call: call};
+var Op = function(c, args, pl, pr, name, fn) {
+	this.c = c;
+	this.args = args;
+	this.precl = pl;
+	this.precr = pr;
+	this.name = name;
+	this.call = fn;
 };
-var PAPP = OP('/', 2, 1, 1, 'papp', function(a, b) {return new Expr.PApp(a, b)});
-var RPAPP = OP('\\', 2, 1, 1, 'rpapp', function(a, b) {return new Expr.PApp(a, b, true)});
-var PAPPL = OP('//', 1, 2, 2, 'pappl', function(x) {return new Expr.PAppL(x)});
-var RPAPPL = OP('\\\\', 1, 2, 2, 'rpappl', function(x) {return new Expr.PAppL(x, true)});
-var TO = OP('..', 2, 3, 3, 'to', function(a, b) {return new Expr.Call(new Expr.Name('to'), [a, b])});
-var UNTIL = OP('...', 2, 3, 3, 'until', function(a, b) {return new Expr.Call(new Expr.Name('until'), [a, b])});
-var COMMA = OP(',', 2, 4, 4, 'pair', function(a, b) {return new Expr.Array([a, b])});
-var NEG = OP('-', 1, 9, 9, 'neg', function(x) {return new Expr.Call(new Expr.Name('neg'), [x])});
-var EXTEND = OP('@', 1, 10, 10, function(x) {
+Op.prototype.toString = function() {return this.c};
+
+var PAPP = new Op('/', 2, 1, 1, 'papp');
+var RPAPP = new Op('\\', 2, 1, 1, 'rpapp');
+var PAPPL = new Op('//', 1, 2, 2, 'pappl');
+var RPAPPL = new Op('\\\\', 1, 2, 2, 'rpappl');
+var TO = new Op('..', 2, 3, 3, 'to');
+var UNTIL = new Op('...', 2, 3, 3, 'until');
+var COMMA = new Op(',', 2, 4, 4, 'pair');
+var NEG = new Op('-', 1, 9, 9, 'neg');
+var EXTEND = new Op('@', 1, 10, 10, null, function(x) {
 	if(x instanceof Expr.Composition) return new Expr.Array(x.val);
 	else if(x instanceof Expr.Fork) return new Expr.Map(x.val);
-	else if(c instanceof Expr.Group) return !x.val.length? new Expr.Name('id'): new Expr.Call(x.val[0], x.val.slice(1));
+	else if(x instanceof Expr.Group) return !x.val.length? new Expr.Name('id'): new Expr.Call(x.val[0], x.val.slice(1));
 	err('invalid prefix @ for ' + x);
 });
-var COND = OP('?', 1, 10, 10, 'cond', function(x) {
+var COND = new Op('?', 1, 10, 10, 'cond', function(x) {
 	if(x instanceof Expr.Fork) return new Expr.Cond(x.val);
 	err('invalid prefix ? for ' + x);
 });
-var ASSIGNMENT = OP(':', 2, 0, 0, function() {err('assignment unimplemented')});
+var ASSIGNMENT = new Op(':', 2, 0, 0);
 
+// parsing
 var parse = function(s) {
 	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4, BLOCKCOMMENT = 5;
 	var state = START, p = [], r = [], t = [], b = [], esc = false;
@@ -106,33 +114,39 @@ var parse = function(s) {
 
 var handleOps = function(a) {
 	var r = a.slice();
-	var o = a.filter(function(x) {return !(x instanceof Expr.Expr)})
+	var o = a.filter(function(x) {return x instanceof Op})
 		.sort(function(a, b) {return a.precr < b.precl});
 	for(var i = 0, l = o.length; i < l; i++) {
 		var op = o[i], index = r.indexOf(op);
+		if(!op.call && !op.name) err('operator ' + op + ' unimplemented');
 		if(index === -1) err('cannot find operator ' + op);
 		if(op.args === 1) {
 			if(!r[index + 1]) {
 				if(!op.name) err('trying to quote unquotable operator ' + op);
 				r.splice(index, 1, new Expr.Name(op.name));	
-			} else r.splice(index, 2, op.call(r[index + 1]));
+			} else if(!op.call)
+				r.splice(index, 2, new Expr.Call(new Expr.Name(op.name), [r[index + 1]]));
+			else
+				r.splice(index, 2, op.call(r[index + 1]));
 		} else if(op.args === 2) {
 			if(!r[index - 1] && !r[index + 1]) {
 				if(!op.name) err('trying to quote unquotable operator ' + op);
 				r.splice(index, 1, new Expr.Name(op.name));	
 			} else if(!r[index - 1]) {
 				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index, 2, new Expr.PApp(new Expr.Name(op.name), r[index + 1], true));
+				r.splice(index, 2, new Expr.Call(new Expr.Name('rpapp'), [new Expr.Name(op.name), r[index + 1]]));
 			} else if(!r[index + 1]) {
 				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index - 1, 2, new Expr.PApp(new Expr.Name(op.name), r[index - 1]));
-			} else r.splice(index - 1, 3, op.call(r[index - 1], r[index + 1]));
+				r.splice(index - 1, 2, new Expr.Call(new Expr.Name('papp'), [new Expr.Name(op.name), r[index - 1]]));
+			} else if(!op.call)
+				r.splice(index - 1, 3, new Expr.Call(new Expr.Name(op.name), [r[index - 1], r[index + 1]]));
+			else r.splice(index - 1, 3, op.call(r[index - 1], r[index + 1]));
 		} else err('operator with invalid args ' + op);
 	}
 	return r;	
 };
 
-///
+// terms
 var litc = function(x) {return x.isLiteral()? new Expr.Call(new Expr.Name('constant'), [x]): x};
 
 var Expr = {};
@@ -157,24 +171,6 @@ Expr.String.prototype = Object.create(Expr.Expr.prototype);
 Expr.String.prototype.toString = function() {return '"' + this.val + '"'};
 Expr.String.prototype.toJS = function() {return '"' + this.val + '"'};
 Expr.String.prototype.isLiteral = function() {return true}; 
-
-Expr.PApp = function(a, b, rev) {this.a = a; this.b = b; this.rev = rev || false};
-Expr.PApp.prototype = Object.create(Expr.Expr.prototype);
-Expr.PApp.prototype.toString = function() {return '('+ this.a + (this.rev? '\\': '/') + this.b + ')'}; 
-Expr.PApp.prototype.optimize = function() {
-	return this.rev?
-		new Expr.Call(new Expr.Name('rpapp'), [this.a.optimize(), this.b.optimize()]):
-		new Expr.Call(new Expr.Name('papp'), [this.a.optimize(), this.b.optimize()]);
-};
-
-Expr.PAppL = function(fn, rev) {this.fn = fn; this.rev = rev || false};
-Expr.PAppL.prototype = Object.create(Expr.Expr.prototype);
-Expr.PAppL.prototype.toString = function() {return (this.rev? '\\\\': '//') + this.fn}; 
-Expr.PAppL.prototype.optimize = function() {
-	return this.rev?
-		new Expr.Call(new Expr.Name('rpappl'), [this.fn.optimize()]):
-		new Expr.Call(new Expr.Name('pappl'), [this.fn.optimize()]);
-};
 
 Expr.Call = function(fn, args) {this.fn = fn; this.args = args};
 Expr.Call.prototype = Object.create(Expr.Expr.prototype);
@@ -274,8 +270,7 @@ Expr.Let.prototype.toJS = function() {
 	return '(function(' + this.name.toJS() + ') {return ' + this.body.toJS() + '})(' + this.arg.toJS() + ')';
 };
 
-/// testing
-
+// lib
 var Seq = {};
 Seq.Base = function() {};
 Seq.Base.prototype.map = function(f) {return new Seq.Map(this, f)};
@@ -428,8 +423,7 @@ var app = function(f, a) {return f.apply(this, a)};
 var call = function(f, x) {return f(x)};
 var call2 = function(f, x, y) {return f(x, y)};
 
-//
-
+// commandline/repl
 if(typeof global != 'undefined' && global) {
 	// Export
 	// if(module && module.exports) module.exports = Poffer;
@@ -452,8 +446,8 @@ if(typeof global != 'undefined' && global) {
 							var j = o.toJS();
 							console.log('' + j);
 							var t = Date.now();
-							console.log('' + show(eval(j)()));
-							//console.log((Date.now() - t) + 'ms');
+							console.log('' + show(eval(j)));
+							// console.log((Date.now() - t) + 'ms');
 						} catch(error) {
 							console.log('' + error);
 						}
@@ -477,3 +471,4 @@ if(typeof global != 'undefined' && global) {
 		}
 	}
 }
+
