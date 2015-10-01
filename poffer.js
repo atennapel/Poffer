@@ -4,7 +4,6 @@
  * @author Albert ten Napel
  * 
  * TODO
- * 	string escapes
  * 	think about ,
  * 	block comments
  * 	fix operator precedence!
@@ -13,6 +12,7 @@ var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + 
 var meth = function(m) {return function(x) {return x[m]()}};
 var err = function(m) {throw new Error(m)};
 
+// operators
 var PAPP = {toString: function() {return '/'}};
 var RPAPP = {toString: function() {return '\\'}};
 var PAPPL = {toString: function() {return '//'}};
@@ -24,13 +24,15 @@ var EXTEND = {toString: function() {return '@'}};
 var ASSIGNMENT = {toString: function() {return ':'}};
 var COND = {toString: function() {return '?'}};
 var NEG = {toString: function() {return '-'}};
+
 var parse = function(s) {
 	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4;
-	var state = START, p = [], r = [], t = [], b = [];
+	var state = START, p = [], r = [], t = [], b = [], esc = false;
 	for(var i = 0, l = s.length; i <= l; i++) {
 		var c = s[i] || '';
 		// console.log('<' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 		if(state === START) {
+
 			if(c === '.' && s[i+1] === '.' && s[i+2] === '.') r.push(UNTIL), i += 2;
 			else if(c === '.' && s[i+1] === '.') r.push(TO), i++;
 			else if(c === '/' && s[i+1] === '/') r.push(PAPPL), i++;
@@ -42,6 +44,7 @@ var parse = function(s) {
 			else if(c === '?') r.push(COND);
 			else if(c === '/') r.push(PAPP);
 			else if(c === '\\') r.push(RPAPP);
+
 			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
 			else if(c === '"') state = STRING;
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
@@ -69,7 +72,9 @@ var parse = function(s) {
 		} else if(state === COMMENT) {
 			if(c === '\n' || c === '\r') state = START;
 		} else if(state === STRING) {
-			if(c === '"') r.push(new Expr.String(t.join(''))), t = [], state = START;
+			if(esc) t.push(c), esc = false;
+			else if(c === '\\') t.push(c), esc = true;
+			else if(c === '"') r.push(new Expr.String(t.join(''))), t = [], state = START;
 			else t.push(c);
 		}
 		// console.log('>' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
@@ -405,7 +410,7 @@ var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = '@(add 1 2)'
+var s = '"asd\\n\\t\\""'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);
