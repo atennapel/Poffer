@@ -18,7 +18,7 @@ Programming language with a focus on point-free (tacit) programming.
 ;; fizzbuzz
 [
 	1..100
-	? {
+	map/?{
 		divisible\15 "FizzBuzz"
 		divisible\3 "Fizz"
 		divisible\5 "Buzz"
