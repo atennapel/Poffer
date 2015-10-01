@@ -4,7 +4,7 @@
  * @author Albert ten Napel
  * 
  * TODO
- * 	strings
+ * 	string escapes
  * 	map literals
  * 	think about ,
  * 	block comments
@@ -26,7 +26,7 @@ var ASSIGNMENT = {toString: function() {return ':'}};
 var COND = {toString: function() {return '?'}};
 var NEG = {toString: function() {return '-'}};
 var parse = function(s) {
-	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3;
+	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4;
 	var state = START, p = [], r = [], t = [], b = [];
 	for(var i = 0, l = s.length; i <= l; i++) {
 		var c = s[i] || '';
@@ -34,7 +34,6 @@ var parse = function(s) {
 		if(state === START) {
 			if(c === '.' && s[i+1] === '.' && s[i+2] === '.') r.push(UNTIL), i += 2;
 			else if(c === '.' && s[i+1] === '.') r.push(TO), i++;
-			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
 			else if(c === '/' && s[i+1] === '/') r.push(PAPPL), i++;
 			else if(c === '\\' && s[i+1] === '\\') r.push(RPAPPL), i++;
 			else if(c === ',') r.push(COMMA);
@@ -44,6 +43,8 @@ var parse = function(s) {
 			else if(c === '?') r.push(COND);
 			else if(c === '/') r.push(PAPP);
 			else if(c === '\\') r.push(RPAPP);
+			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
+			else if(c === '"') state = STRING;
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
 			else if(/[a-z]/i.test(c)) t.push(c), state = NAME;
 			else if(/[0-9]/.test(c)) t.push(c), state = NUMBER;
@@ -68,6 +69,9 @@ var parse = function(s) {
 			else t.push(c);
 		} else if(state === COMMENT) {
 			if(c === '\n' || c === '\r') state = START;
+		} else if(state === STRING) {
+			if(c === '"') r.push(new Expr.String(t.join(''))), t = [], state = START;
+			else t.push(c);
 		}
 		// console.log('>' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 	}
@@ -132,6 +136,12 @@ Expr.Number.prototype = Object.create(Expr.Expr.prototype);
 Expr.Number.prototype.toString = function() {return this.val}; 
 Expr.Number.prototype.toJS = function() {return this.val};
 Expr.Number.prototype.isLiteral = function() {return true}; 
+
+Expr.String = function(str) {this.val = str};
+Expr.String.prototype = Object.create(Expr.Expr.prototype);
+Expr.String.prototype.toString = function() {return '"' + this.val + '"'};
+Expr.String.prototype.toJS = function() {return '"' + this.val + '"'};
+Expr.String.prototype.isLiteral = function() {return true}; 
 
 Expr.PApp = function(a, b, rev) {this.a = a; this.b = b; this.rev = rev || false};
 Expr.PApp.prototype = Object.create(Expr.Expr.prototype);
@@ -364,6 +374,8 @@ var minl = function(a) {return a.reduce(min, Number.MAX_VALUE)};
 var take = function(n, a) {return a.take(n)};
 var last = function(a) {return a.last()};
 
+var index = function(i, a) {return a[i]};
+
 var constant = function(x) {return function(y) {return x}};
 var fn = function(x) {return typeof x === 'function'? x: constant(x)};
 var papp = function(f, x) {return function() {return f.apply(this, [x].concat(Array.prototype.slice.call(arguments)))}};
@@ -377,7 +389,7 @@ var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = '[@[1 -2 3 -4 5] ;; bla blad!@#$DSAD\n map/(?{lt\\0 neg})]'
+var s = '["asd" index/1]'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);
