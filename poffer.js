@@ -1,11 +1,14 @@
-/** poffer v0.0.1
+/**
+ * Poffer v0.0.1
  * point-free programming
  * @author Albert ten Napel
  * 
  * TODO
  * 	strings
- * 	array/map literals
- * 	operators: ? : ,
+ * 	map literals
+ * 	operators: ?
+ * 	think about ,
+ * 	comments
  */
 var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + ']': '' + x};
 var meth = function(m) {return function(x) {return x[m]()}};
@@ -18,6 +21,8 @@ var RPAPPL = {toString: function() {return '\\\\'}};
 var TO = {toString: function() {return '..'}};
 var UNTIL = {toString: function() {return '...'}};
 var COMMA = {toString: function() {return ','}};
+var EXTEND = {toString: function() {return '@'}};
+var ASSIGNMENT = {toString: function() {return ':'}};
 var parse = function(s) {
 	var START = 0, NAME = 1, NUMBER = 2;
 	var state = START, p = [], r = [], t = [], b = [];
@@ -30,6 +35,8 @@ var parse = function(s) {
 			else if(c === '/' && s[i+1] === '/') r.push(PAPPL), i++;
 			else if(c === '\\' && s[i+1] === '\\') r.push(RPAPPL), i++;
 			else if(c === ',') r.push(COMMA);
+			else if(c === ':') r.push(ASSIGNMENT);
+			else if(c === '@') r.push(EXTEND);
 			else if(c === '/') r.push(PAPP);
 			else if(c === '\\') r.push(RPAPP);
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
@@ -69,7 +76,7 @@ var handleOps = function(a) {
 			if(op) err('invalid operator position: ' + c);
 			op = c;
 		} else if(op) {
-			if(!r[r.length - 1] && (op === PAPP || op === RPAPP || op === TO || op === UNTIL || op === COMMA))
+			if(!r[r.length - 1] && (op === PAPP || op === RPAPP || op === TO || op === UNTIL || op === COMMA || op === ASSIGNMENT))
 				err('operator without left argument: ' + op);
 			if(op === PAPP) r.push(new Expr.PApp(r.pop(), c));
 			else if(op === RPAPP) r.push(new Expr.PApp(r.pop(), c, true));
@@ -78,7 +85,16 @@ var handleOps = function(a) {
 			else if(op === TO) r.push(new Expr.Call(new Expr.Name('to'), [r.pop(), c]));
 			else if(op === UNTIL) r.push(new Expr.Call(new Expr.Name('until'), [r.pop(), c]));
 			else if(op === COMMA) r.push(new Expr.Array([r.pop(), c]));
-			else err('invalid operator: ' + op);
+			else if(op === ASSIGNMENT) {
+				var rest = a.slice(i + 1);
+				if(rest.length < 1) err('assignment without body');
+				r.push(new Expr.Let(r.pop(), c, new Expr.Group(handleOps(rest))));
+				op = null;
+				break;
+			} else if(op === EXTEND) {
+				if(!(c instanceof Expr.Composition)) err('cannot prefix ' + c + ' with @');
+				r.push(new Expr.Array(c.val));
+			} else err('invalid operator: ' + op);
 			op = null;
 		} else r.push(c);
 	}
@@ -187,7 +203,17 @@ Expr.Array.prototype.toJS = function() {
 	return '[' + this.val.map(meth('toJS')).join(', ') + ']';
 };
 
-///
+Expr.Let = function(name, arg, body) {this.name = name; this.arg = arg; this.body = body};
+Expr.Let.prototype = Object.create(Expr.Expr.prototype);
+Expr.Let.prototype.toString = function() {return 'Let ' + this.name + ': ' + this.arg + ' in ' + this.body};
+Expr.Let.prototype.optimize = function() {
+	return new Expr.Let(this.name, this.arg.optimize(), this.body.optimize());
+};
+Expr.Let.prototype.toJS = function() {
+	return '(function(' + this.name.toJS() + ') {return ' + this.body.toJS() + '})(' + this.arg.toJS() + ')';
+};
+
+/// testing
 
 var Seq = {};
 Seq.Base = function() {};
@@ -317,10 +343,11 @@ var pappl = function(f) {return function(x) {return papp(f, x)}};
 var rpappl = function(f) {return function(x) {return rpapp(f, x)}};
 var comp = function(f, g) {return function() {return fn(g)(fn(f).apply(this, arguments))}};
 var fork = function(a, b, c) {return function() {return fn(b)(fn(a).apply(this, arguments), fn(c).apply(this, arguments))}};
+var app = function(f, a) {return f.apply(this, a)};
 
 ///
 
-var s = '1,2,3'
+var s = 'a: 10 b: 20 [@[a b] app/add]'
 console.log('' + s);
 var p = parse(s);
 console.log('' + p);

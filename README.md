@@ -2,7 +2,7 @@
 Programming language with a focus on point-free (tacit) programming.
 
 # Examples
-```javascript
+```python
 ;; average
 {sum div len}
 
