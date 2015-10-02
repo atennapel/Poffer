@@ -31,12 +31,10 @@ Op.prototype.toString = function() {return this.c};
 
 var PAPP = new Op('/', 2, 1, 1, 'papp');
 var RPAPP = new Op('\\', 2, 1, 1, 'rpapp');
-var PAPPL = new Op('//', 1, 2, 2, 'pappl');
-var RPAPPL = new Op('\\\\', 1, 2, 2, 'rpappl');
 var TO = new Op('..', 2, 3, 3, 'to');
 var UNTIL = new Op('...', 2, 3, 3, 'until');
 var COMMA = new Op(',', 2, 4, 4, 'pair');
-var NEG = new Op('-', 1, 9, 9, 'neg');
+var NEG = new Op('_', 1, 9, 9, 'neg');
 var EXTEND = new Op('@', 1, 10, 10, null, function(x) {
 	if(x instanceof Expr.Composition) return new Expr.Array(x.val);
 	else if(x instanceof Expr.Fork) return new Expr.Map(x.val);
@@ -60,10 +58,8 @@ var parse = function(s) {
 
 			if(c === '.' && s[i+1] === '.' && s[i+2] === '.') r.push(UNTIL), i += 2;
 			else if(c === '.' && s[i+1] === '.') r.push(TO), i++;
-			else if(c === '/' && s[i+1] === '/') r.push(PAPPL), i++;
-			else if(c === '\\' && s[i+1] === '\\') r.push(RPAPPL), i++;
 			else if(c === ',') r.push(COMMA);
-			else if(c === '-') r.push(NEG);
+			else if(c === '_') r.push(NEG);
 			else if(c === ':') r.push(ASSIGNMENT);
 			else if(c === '@') r.push(EXTEND);
 			else if(c === '?') r.push(COND);
@@ -414,8 +410,6 @@ var constant = function(x) {return function(y) {return x}};
 var fn = function(x) {return typeof x === 'function'? x: constant(x)};
 var papp = function(f, x) {return function() {return f.apply(this, [x].concat(Array.prototype.slice.call(arguments)))}};
 var rpapp = function(f, x) {return function(y) {return f.apply(this, [y, x].concat(Array.prototype.slice.call(arguments, 1)))}};
-var pappl = function(f) {return function(x) {return papp(f, x)}};
-var rpappl = function(f) {return function(x) {return rpapp(f, x)}};
 var comp = function(f, g) {return function() {return fn(g)(fn(f).apply(this, arguments))}};
 var fork = function(a, b, c) {return function() {return fn(b)(fn(a).apply(this, arguments), fn(c).apply(this, arguments))}};
 var cond = function(a, b, c) {return function() {return fn(a).apply(this, arguments)? fn(b).apply(this, arguments): fn(c).apply(this, arguments)}};
