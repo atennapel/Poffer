@@ -4,13 +4,23 @@
  * @author Albert ten Napel
  * 
  * TODO
- * 	think about ,
+ *  add operators | & = > < >= <=
+ *  add operators . ^
  * 	operator reversing ~*
+ * 	operator autoquoting
  *  operator papp %%/x %%\x
+ *  section composition 1,..10
+ *
  * 	fix assignment :
+ *
+ *  call syntax ()
+ *
  * 	REPL options
  * 	REPL assignments
+ *
  * 	rangef with multiple start
+ *
+ * 	fix seqs (wrap all array/string/maps)
  */
 var version = '0.0.1';
 
