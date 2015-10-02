@@ -6,10 +6,10 @@
  * TODO
  * 	think about ,
  * 	operator reversing ~*
+ *  operator papp %%/x %%\x
  * 	fix assignment :
  * 	REPL options
  * 	REPL assignments
- * 	range with step
  * 	rangef with multiple start
  */
 var version = '0.0.1';
@@ -34,7 +34,6 @@ var RPAPP = new Op('\\', 2, 1, 1, 'rpapp');
 var TO = new Op('..', 2, 3, 3, 'to');
 var UNTIL = new Op('...', 2, 3, 3, 'until');
 var COMMA = new Op(',', 2, 4, 4, 'pair');
-var NEG = new Op('_', 1, 9, 9, 'neg');
 var EXTEND = new Op('@', 1, 10, 10, null, function(x) {
 	if(x instanceof Expr.Composition) return new Expr.Array(x.val);
 	else if(x instanceof Expr.Fork) return new Expr.Map(x.val);
@@ -45,7 +44,17 @@ var COND = new Op('?', 1, 10, 10, 'cond', function(x) {
 	if(x instanceof Expr.Fork) return new Expr.Cond(x.val);
 	err('invalid prefix ? for ' + x);
 });
+var REVF = new Op('~', 1, 99, 99, 'revf');
 var ASSIGNMENT = new Op(':', 2, 0, 0);
+
+var NEG = new Op('_', 1, 9, 9, 'neg');
+var ADD = new Op('+', 2, 4, 4, 'add');
+var SUB = new Op('-', 2, 4, 4, 'sub');
+var MUL = new Op('*', 2, 5, 5, 'mul');
+var DIV = new Op('//', 2, 5, 5, 'div');
+var IDIV = new Op('\\\\', 2, 5, 5, 'idiv');
+var MOD = new Op('%', 2, 5, 5, 'mod');
+var DIVB = new Op('%%', 2, 3, 3, 'divisible');
 
 // parsing
 var parse = function(s) {
@@ -58,13 +67,22 @@ var parse = function(s) {
 
 			if(c === '.' && s[i+1] === '.' && s[i+2] === '.') r.push(UNTIL), i += 2;
 			else if(c === '.' && s[i+1] === '.') r.push(TO), i++;
+			else if(c === '/' && s[i+1] === '/') r.push(DIV), i++;
+			else if(c === '\\' && s[i+1] === '\\') r.push(IDIV), i++;
 			else if(c === ',') r.push(COMMA);
-			else if(c === '_') r.push(NEG);
+			else if(c === '~') r.push(REVF);
 			else if(c === ':') r.push(ASSIGNMENT);
 			else if(c === '@') r.push(EXTEND);
 			else if(c === '?') r.push(COND);
 			else if(c === '/') r.push(PAPP);
 			else if(c === '\\') r.push(RPAPP);
+
+			else if(c === '%' && s[i+1] === '%') r.push(DIVB), i++;
+			else if(c === '_') r.push(NEG);
+			else if(c === '+') r.push(ADD);
+			else if(c === '-') r.push(SUB);
+			else if(c === '*') r.push(MUL);
+			else if(c === '%') r.push(MOD);
 
 			else if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = BLOCKCOMMENT, i += 2;
 			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
@@ -322,13 +340,29 @@ Seq.Map.prototype.forEach = function(f) {
 };
 Seq.Map.prototype.toString = function() {return 'Map'};
 
-Seq.Range = function(a, b) {this.a = a; this.b = b};
+Seq.Range = function(a, b) {
+	if(Array.isArray(a.a)) {
+		this.a = a.a[0]; 
+		this.b = b;
+		this.step = a.a[1];
+	} else {
+		this.a = a;
+		this.b = b;
+		this.step = this.a < this.b? 1: -1;
+	}
+	if(this.step === 0 || (this.step > 0 && this.b < this.a) || (this.step < 0 && this.a < this.b))
+		err('invalid range (' + this.a + ', ' + this.step + '..' + this.b + ')');
+};
 Seq.Range.prototype = Object.create(Seq.Base.prototype);
 Seq.Range.prototype.forEach = function(f) {
-	for(var i = this.a, j = 0, b = this.b; i <= b; i++, j++) if(f(i, j)) break;
+	if(this.step > 0) {
+		for(var i = this.a, j = 0, b = this.b, s = this.step; i <= b; i += s, j++) if(f(i, j)) break;
+	} else {
+		for(var i = this.a, j = 0, b = this.b, s = this.step; i >= b; i += s, j++) if(f(i, j)) break;
+	}
 };
 Seq.Range.prototype.last = function() {return this.b};
-Seq.Range.prototype.toString = function() {return '(' + this.a + '..' + this.b + ')'};
+Seq.Range.prototype.toString = function() {return '(' + this.a + ', ' + this.step + '..' + this.b + ')'};
 
 Seq.Array = function(a) {this.a = a};
 Seq.Array.prototype = Object.create(Seq.Base.prototype);
@@ -416,6 +450,7 @@ var cond = function(a, b, c) {return function() {return fn(a).apply(this, argume
 var app = function(f, a) {return f.apply(this, a)};
 var call = function(f, x) {return f(x)};
 var call2 = function(f, x, y) {return f(x, y)};
+var revf = function(f) {return function() {return f.apply(this, Array.prototype.slice.call(arguments).reverse())}};
 
 // commandline/repl
 if(typeof global != 'undefined' && global) {
