@@ -13,8 +13,6 @@
  *
  * 	fix assignment :
  *
- *  call syntax ()
- *
  * 	REPL options
  * 	REPL assignments
  *
@@ -225,7 +223,7 @@ Expr.Group.prototype.toString = function() {return '(' + this.val.join(' ') + ')
 Expr.Group.prototype.optimize = function() {
 	if(this.val.length === 0) err('empty group: ()');
 	if(this.val.length === 1) return this.val[0].optimize();
-	return new Expr.Group(this.val.map(meth('optimize')));
+	return new Expr.Call(this.val[0], this.val.slice(1)).optimize();
 };
 Expr.Group.prototype.toJS = function() {
 	return '(' + this.val.map(meth('toJS')).join(', ') + ')';
