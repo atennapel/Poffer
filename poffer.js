@@ -29,42 +29,44 @@ var meth = function(m) {return function(x) {return x[m]()}};
 var err = function(m) {throw new Error(m)};
 
 // operators
-var Op = function(c, args, pl, pr, name, fn) {
+var Op = function(c, args, pl, pr, ql, qr, name, fn) {
 	this.c = c;
 	this.args = args;
 	this.precl = pl;
 	this.precr = pr;
+	this.quotel = ql;
+	this.quoter = qr;
 	this.name = name;
 	this.call = fn;
 };
 Op.prototype.toString = function() {return this.c};
 
-var PAPP = new Op('/', 2, 1, 1, 'papp');
-var RPAPP = new Op('\\', 2, 1, 1, 'rpapp');
-var TO = new Op('..', 2, 3, 3, 'to');
-var UNTIL = new Op('...', 2, 3, 3, 'until');
-var COMMA = new Op(',', 2, 4, 4, 'pair');
-var EXTEND = new Op('@', 1, 10, 10, null, function(x) {
+var PAPP = new Op('/', 2, 5, 5, true, true, 'papp');
+var RPAPP = new Op('\\', 2, 1, 1, true, true, 'rpapp');
+var TO = new Op('..', 2, 3, 3, false, true, 'to');
+var UNTIL = new Op('...', 2, 3, 3, false, true, 'until');
+var COMMA = new Op(',', 2, 4, 4, false, false, 'pair');
+var EXTEND = new Op('@', 1, 10, 10, false, false, null, function(x) {
 	if(x instanceof Expr.Composition) return new Expr.Array(x.val);
 	else if(x instanceof Expr.Fork) return new Expr.Map(x.val);
 	else if(x instanceof Expr.Group) return !x.val.length? new Expr.Name('id'): new Expr.Call(x.val[0], x.val.slice(1));
 	err('invalid prefix @ for ' + x);
 });
-var COND = new Op('?', 1, 10, 10, 'cond', function(x) {
+var COND = new Op('?', 1, 10, 10, false, false, 'cond', function(x) {
 	if(x instanceof Expr.Fork) return new Expr.Cond(x.val);
 	err('invalid prefix ? for ' + x);
 });
-var REVF = new Op('~', 1, 99, 99, 'revf');
-var ASSIGNMENT = new Op(':', 2, 0, 0);
+var REVF = new Op('~', 1, 99, 99, true, true, 'revf');
+var ASSIGNMENT = new Op(':', 2, 0, 0, false, false);
 
-var NEG = new Op('_', 1, 9, 9, 'neg');
-var ADD = new Op('+', 2, 4, 4, 'add');
-var SUB = new Op('-', 2, 4, 4, 'sub');
-var MUL = new Op('*', 2, 5, 5, 'mul');
-var DIV = new Op('//', 2, 5, 5, 'div');
-var IDIV = new Op('\\\\', 2, 5, 5, 'idiv');
-var MOD = new Op('%', 2, 5, 5, 'mod');
-var DIVB = new Op('%%', 2, 3, 3, 'divisible');
+var NEG = new Op('_', 1, 9, 9, false, false, 'neg');
+var ADD = new Op('+', 2, 4, 4, false, false, 'add');
+var SUB = new Op('-', 2, 4, 4, false, false, 'sub');
+var MUL = new Op('*', 2, 5, 5, false, false, 'mul');
+var DIV = new Op('//', 2, 5, 5, false, false, 'div');
+var IDIV = new Op('\\\\', 2, 5, 5, false, false, 'idiv');
+var MOD = new Op('%', 2, 5, 5, false, false, 'mod');
+var DIVB = new Op('%%', 2, 3, 3, false, false, 'divisible');
 
 // parsing
 var parse = function(s) {
@@ -136,6 +138,11 @@ var parse = function(s) {
 	return new Expr.Group(handleOps(r));
 };
 
+var quote = function(op) {
+	if(!(op instanceof Op)) return op;
+	if(!op.name) err('cannot quote operator ' + op);
+	return new Expr.Name(op.name);
+};
 var handleOps = function(a) {
 	var r = a.slice();
 	var o = a.filter(function(x) {return x instanceof Op})
@@ -143,28 +150,31 @@ var handleOps = function(a) {
 	for(var i = 0, l = o.length; i < l; i++) {
 		var op = o[i], index = r.indexOf(op);
 		if(!op.call && !op.name) err('operator ' + op + ' unimplemented');
-		if(index === -1) err('cannot find operator ' + op);
+		if(index === -1) continue;//err('cannot find operator ' + op);
 		if(op.args === 1) {
-			if(!r[index + 1]) {
-				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index, 1, new Expr.Name(op.name));	
-			} else if(!op.call)
-				r.splice(index, 2, new Expr.Call(new Expr.Name(op.name), [r[index + 1]]));
-			else
-				r.splice(index, 2, op.call(r[index + 1]));
+			if(!r[index + 1]) r.splice(index, 1, quote(op));	
+			else {
+				var next = op.quoter? quote(r[index + 1]): r[index + 1];
+				r.splice(index, 2, op.call? op.call(next): new Expr.Call(quote(op), [next]));
+			}
 		} else if(op.args === 2) {
-			if(!r[index - 1] && !r[index + 1]) {
-				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index, 1, new Expr.Name(op.name));	
-			} else if(!r[index - 1]) {
-				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index, 2, new Expr.Call(new Expr.Name('rpapp'), [new Expr.Name(op.name), r[index + 1]]));
-			} else if(!r[index + 1]) {
-				if(!op.name) err('trying to quote unquotable operator ' + op);
-				r.splice(index - 1, 2, new Expr.Call(new Expr.Name('papp'), [new Expr.Name(op.name), r[index - 1]]));
-			} else if(!op.call)
-				r.splice(index - 1, 3, new Expr.Call(new Expr.Name(op.name), [r[index - 1], r[index + 1]]));
-			else r.splice(index - 1, 3, op.call(r[index - 1], r[index + 1]));
+			if(!r[index - 1] && !r[index + 1])
+				r.splice(index, 1, quote(op));	
+			else if(!r[index - 1])
+				r.splice(index, 2, new Expr.Call(new Expr.Name('rpapp'), [
+					quote(op),
+					op.quoter? quote(r[index + 1]): r[index + 1]
+				]));
+			else if(!r[index + 1])
+				r.splice(index - 1, 2, new Expr.Call(new Expr.Name('papp'), [
+					quote(op),
+					op.quotel? quote(r[index - 1]): r[index - 1]
+				]));
+			else {
+				var left = op.quotel? quote(r[index - 1]): r[index - 1];
+				var right = op.quoter? quote(r[index + 1]): r[index + 1];
+				r.splice(index - 1, 3, op.call? op.call(left, right): new Expr.Call(quote(op), [left, right]));
+			}
 		} else err('operator with invalid args ' + op);
 	}
 	return r;	

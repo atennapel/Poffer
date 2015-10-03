@@ -1,0 +1,6 @@
+~f/x = f\x
+x ~op y = y op x
+f/x/y = (f/x)/y
+f\x\y = (f\x)\y
+f/x\y = (f/x)\y
+f\x/y = (f\x)/y
