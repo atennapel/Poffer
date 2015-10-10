@@ -4,6 +4,8 @@
  * @author Albert ten Napel
  * 
  * TODO
+ *  clean up operators!
+ *
  *  add operators | & = > < >= <=
  *  add operators . ^
  * 	operator reversing ~*
@@ -43,7 +45,8 @@ var PAPP = new Op('/', 2, 5, 5, true, true, 'papp');
 var RPAPP = new Op('\\', 2, 1, 1, true, true, 'rpapp');
 var TO = new Op('..', 2, 3, 3, false, true, 'to');
 var UNTIL = new Op('...', 2, 3, 3, false, true, 'until');
-var COMMA = new Op(',', 2, 4, 4, false, false, 'pair');
+var COMMA = new Op(',', 2, 4, 4, false, false, 'concat');
+var SEMICOLON = new Op(',', 2, 4, 4, false, false, 'concatarr');
 var EXTEND = new Op('@', 1, 10, 10, false, false, null, function(x) {
 	if(x instanceof Expr.Composition) return new Expr.Array(x.val);
 	else if(x instanceof Expr.Fork) return new Expr.Map(x.val);
@@ -71,7 +74,7 @@ var parse = function(s) {
 	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4, BLOCKCOMMENT = 5;
 	var state = START, p = [], r = [], t = [], b = [], esc = false;
 	for(var i = 0, l = s.length; i <= l; i++) {
-		var c = s[i] || '';
+		var c = s[i] || '\n';
 		// console.log('<' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 		if(state === START) {
 
@@ -96,6 +99,7 @@ var parse = function(s) {
 
 			else if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = BLOCKCOMMENT, i += 2;
 			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
+			else if(c === ';') r.push(SEMICOLON);
 			else if(c === '"') state = STRING;
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
 			else if(/[a-z]/i.test(c)) t.push(c), state = NAME;
@@ -133,7 +137,7 @@ var parse = function(s) {
 	}
 	if(b.length) err('unmatched brackets: ' + b.join(' '));
 	if(state !== START) err('parser error');
-	return new Expr.Group(handleOps(r));
+	return new Expr.Composition(handleOps(r));
 };
 
 var quote = function(op) {
@@ -416,6 +420,7 @@ var div = function(x, y) {return x / y};
 var idiv = function(x, y) {return Math.floor(x / y)};
 var rem = function(x, y) {return x % y};
 var mod = function(x, y) {return ((x % y) + y) % y};
+var pow = function(x, y) {return Math.pow(x, y)};
 var divisible = function(x, y) {return x % y === 0};
 var max = function(x, y) {return Math.max(x, y)};
 var min = function(x, y) {return Math.min(x, y)};
@@ -431,9 +436,13 @@ var and = function(x, y) {return x && y};
 var or = function(x, y) {return x || y};
 var not = function(x) {return !x};
 
+var wrapany = function(x) {return [x]};
+var wrap = function(x) {return Array.isArray(x)? x: [x]};
 var to = function(x, y) {return typeof y === 'function'? new Seq.LazySeq(x, y): new Seq.Range(x, y)};
 var until = function(x, y) {return new Seq.Range(x, y - 1)};
 var pair = function(x, y) {return new Seq.Array([x, y])};
+var concat = function(a, b) {return wrap(a).concat(wrap(b))};
+var concatarr = function(a, b) {return wrap(a).concat([b])};
 
 var each = function(f) {return a.forEach(f)};
 var filter = function(f, a) {return a.filter(f)};
@@ -487,14 +496,17 @@ if(typeof global != 'undefined' && global) {
 					if(inp.trim()) {
 						try {
 							var p = parse(inp);
-							console.log('' + p);
+							//console.log('' + p);
 							var o = p.optimize();
-							console.log('' + o);
+							//console.log('' + o);
 							var j = o.toJS();
-							console.log('' + j);
+							//console.log('' + j);
 							var t = Date.now();
-							console.log('' + show(eval(j)));
-							// console.log((Date.now() - t) + 'ms');
+							var e = eval(j);
+							var T = Date.now() - t;
+							//console.log('' + show(e));
+							console.log('' + show(e()));
+							//console.log(T + 'ms');
 						} catch(error) {
 							console.log('' + error);
 						}

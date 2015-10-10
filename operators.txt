@@ -1,0 +1,9 @@
+;; comment to end of line
+;;; comment until next ;;;
+
+in order of precendence (>)
+@f		app/f
+f/x		papp(f, x)
+f\x		rpapp(f, x)
+>f		mapcat/f
+
