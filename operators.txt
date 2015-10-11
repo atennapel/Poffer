@@ -1,9 +1,15 @@
 ;; comment to end of line
 ;;; comment until next ;;;
 
+(x)					x
+(f a b c)		f/a/b/c
+[a b c]/x		c/(b/(a/x))
+{a b c}/x		b/(a/x)/(b/x)
+?{a b c}/x	if a/x then b/x else c/x
+
 in order of precendence (>)
-@f		app/f
-f/x		papp(f, x)
-f\x		rpapp(f, x)
->f		mapcat/f
+f/x		application							f(x)
+f\x		reverse application			flip(f)(x)
+~f		flip										flip(f)
+$x		constant								constant(x)
 
