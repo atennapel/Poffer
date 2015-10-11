@@ -1,15 +1,28 @@
 ;; comment to end of line
 ;;; comment until next ;;;
 
-(x)					x
-(f a b c)		f/a/b/c
-[a b c]/x		c/(b/(a/x))
-{a b c}/x		b/(a/x)/(b/x)
-?{a b c}/x	if a/x then b/x else c/x
+(x)         x
+(f a b c)   f/a/b/c
+[a b c]/x   c/(b/(a/x))
+{a b c}/x   b/(a/x)/(c/x)
+?{a b c}/x  if a/x then b/x else c/x
+a..b        range including end
+a...b       range excluding end
+a,s..b      range including end with step
+a,s...b     range excluding end with step
+
+^           lift expression
+^()
+^[]
+^{}
+^?{}
+^..
+^...
 
 in order of precendence (>)
-f/x		application							f(x)
-f\x		reverse application			flip(f)(x)
-~f		flip										flip(f)
-$x		constant								constant(x)
+f/x   application             f(x)
+f\x   reverse application     flip(f)(x)
+~f    flip                    flip(f)
+&x    constant                constant(x)
+^f    lift                    lift(f)          
 

@@ -14,6 +14,8 @@ Programming language with a focus on point-free (tacit) programming.
 
 ;; isPrime
 {divisible count (1..) eq 2}
+;; more efficient
+?{{negative or even} eq/2 {divisible none 3, 2 ^.. sqrt}}
 
 ;; fizzbuzz
 [
