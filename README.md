@@ -10,10 +10,10 @@ Programming language with a focus on point-free (tacit) programming.
 [1..999 filter/{divisible\3 or divisible\5} sum]
 
 ;; divisors
-{(divisible/) filter 1..}
+{divisible filter 1..}
 
 ;; isPrime
-{(divisible/) count (1..) eq 2}
+{divisible count (1..) eq 2}
 
 ;; fizzbuzz
 [
