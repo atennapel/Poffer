@@ -1,3 +1,24 @@
-sum: reduce/add/0
-product: reduce/mul/1
+%export all
+
+const   nativeConst
+id      nativeId
+
+left    const
+right   const/id
+
+add     nativeAdd
+sub     nativeSub
+mul     nativeMul
+div     nativeDiv
+rem     nativeMod
+mod     ^{left rem right add right rem right}
+
+fold    nativeFoldl
+head    .0
+slice   nativeSlice
+tail    slice/1
+reduce  ~([head ~fold ~] ^^/ tail)
+reducel reduce
+sum     fold/add/0
+product fold/mul/1
 

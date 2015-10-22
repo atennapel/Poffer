@@ -1,5 +1,6 @@
 ;; comment to end of line
 ;;; comment until next ;;;
+%directives
 
 (x)         x
 (f a b c)   f/a/b/c
@@ -11,13 +12,10 @@ a...b       range excluding end
 a,s..b      range including end with step
 a,s...b     range excluding end with step
 
-^           lift expression
-^()
-^[]
-^{}
-^?{}
-^..
-^...
+meta-operators
+^           lift
+^^          lift2
+^^^         lift3
 
 in order of precendence (>)
 f/x   application             f(x)
@@ -25,4 +23,6 @@ f\x   reverse application     flip(f)(x)
 ~f    flip                    flip(f)
 &x    constant                constant(x)
 ^f    lift                    lift(f)          
+^^f   lift                    lift2(f)          
+^^^f  lift                    lift3(f)          
 
