@@ -1,27 +1,17 @@
 %export all
 
-const   #(01)
+id      #(0)
+const   #(a b;a)
 flip    #(0 2 1)
 lift    #(0 (1 2))
 comp    lift
 
-const   nativeConst
-id      nativeId
-
 left    const
 right   const/id
 
-add     nativeAdd
-sub     nativeSub
-mul     nativeMul
-div     nativeDiv
-rem     nativeMod
 mod     ^{left rem right add right rem right}
 
-fold    nativeFoldl
-foldl    nativeFoldl
 head    .0
-slice   nativeSlice
 tail    slice/1
 reduce  ~([head ~fold ~] ^^/ tail)
 reducel reduce
