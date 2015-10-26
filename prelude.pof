@@ -1,7 +1,6 @@
 %export all
 
 id      #(0)
-const   #(a b;a)
 flip    #(0 2 1)
 lift    #(0 (1 2))
 comp    lift
