@@ -2,25 +2,6 @@
  * Poffer
  * point-free programming
  * @author Albert ten Napel
- * 
- * TODO
- *  clean up operators!
- *
- *  add operators | & = > < >= <=
- *  add operators . ^
- * 	operator reversing ~*
- * 	operator autoquoting
- *  operator papp %%/x %%\x
- *  section composition 1,..10
- *
- * 	fix assignment :
- *
- * 	REPL options
- * 	REPL assignments
- *
- * 	rangef with multiple start
- *
- * 	fix seqs (wrap all array/string/maps)
  */
 var version = '0.0.1';
 
@@ -28,48 +9,6 @@ var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + 
 var meth = function(m) {return function(x) {return x[m]()}};
 var err = function(m) {throw new Error(m)};
 
-// operators
-var Op = function(c, args, pl, pr, ql, qr, name, fn) {
-	this.c = c;
-	this.args = args;
-	this.precl = pl;
-	this.precr = pr;
-	this.quotel = ql;
-	this.quoter = qr;
-	this.name = name;
-	this.call = fn;
-};
-Op.prototype.toString = function() {return this.c};
-
-var PAPP = new Op('/', 2, 5, 5, true, true, 'app', function(a, b) {return new Expr.App(a, b)});
-var RPAPP = new Op('\\', 2, 1, 1, true, true, 'flipapp', function(a, b) {return new Expr.App(new Expr.App(new Expr.Name('flip'), a), b)});
-var TO = new Op('..', 2, 3, 3, false, true, 'to');
-var UNTIL = new Op('...', 2, 3, 3, false, true, 'until');
-var COMMA = new Op(',', 2, 4, 4, false, false, 'concat');
-var SEMICOLON = new Op(',', 2, 4, 4, false, false, 'concatarr');
-var EXTEND = new Op('@', 1, 10, 10, false, false, null, function(x) {
-	if(x instanceof Expr.Composition) return new Expr.Array(x.val);
-	else if(x instanceof Expr.Fork) return new Expr.Map(x.val);
-	else if(x instanceof Expr.Group) return !x.val.length? new Expr.Name('id'): new Expr.Call(x.val[0], x.val.slice(1));
-	err('invalid prefix @ for ' + x);
-});
-var COND = new Op('?', 1, 10, 10, false, false, 'cond', function(x) {
-	if(x instanceof Expr.Fork) return new Expr.Cond(x.val);
-	err('invalid prefix ? for ' + x);
-});
-var REVF = new Op('~', 1, 99, 99, true, true, 'revf');
-var ASSIGNMENT = new Op(':', 2, 0, 0, false, false);
-
-var NEG = new Op('_', 1, 9, 9, false, false, 'neg');
-var ADD = new Op('+', 2, 4, 4, false, false, 'add');
-var SUB = new Op('-', 2, 4, 4, false, false, 'sub');
-var MUL = new Op('*', 2, 5, 5, false, false, 'mul');
-var DIV = new Op('//', 2, 5, 5, false, false, 'div');
-var IDIV = new Op('\\\\', 2, 5, 5, false, false, 'idiv');
-var MOD = new Op('%', 2, 5, 5, false, false, 'mod');
-var DIVB = new Op('%%', 2, 3, 3, false, false, 'divisible');
-
-// parsing
 var parse = function(s) {
 	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4, BLOCKCOMMENT = 5;
 	var state = START, p = [], r = [], t = [], b = [], esc = false;
@@ -77,29 +16,8 @@ var parse = function(s) {
 		var c = s[i] || '\n';
 		// console.log('<' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 		if(state === START) {
-
-			if(c === '.' && s[i+1] === '.' && s[i+2] === '.') r.push(UNTIL), i += 2;
-			else if(c === '.' && s[i+1] === '.') r.push(TO), i++;
-			else if(c === '/' && s[i+1] === '/') r.push(DIV), i++;
-			else if(c === '\\' && s[i+1] === '\\') r.push(IDIV), i++;
-			else if(c === ',') r.push(COMMA);
-			else if(c === '~') r.push(REVF);
-			else if(c === ':') r.push(ASSIGNMENT);
-			else if(c === '@') r.push(EXTEND);
-			else if(c === '?') r.push(COND);
-			else if(c === '/') r.push(PAPP);
-			else if(c === '\\') r.push(RPAPP);
-
-			else if(c === '%' && s[i+1] === '%') r.push(DIVB), i++;
-			else if(c === '_') r.push(NEG);
-			else if(c === '+') r.push(ADD);
-			else if(c === '-') r.push(SUB);
-			else if(c === '*') r.push(MUL);
-			else if(c === '%') r.push(MOD);
-
-			else if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = BLOCKCOMMENT, i += 2;
+			if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = BLOCKCOMMENT, i += 2;
 			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
-			else if(c === ';') r.push(SEMICOLON);
 			else if(c === '"') state = STRING;
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
 			else if(/[a-z]/i.test(c)) t.push(c), state = NAME;
@@ -110,7 +28,7 @@ var parse = function(s) {
 				if((c === ')' && br !== '(') ||
 					 (c === ']' && br !== '[') ||
 					 (c === '}' && br !== '{')) err('unmatched bracket: ' + br + ' and ' + c);
-				var a = handleOps(r); r = p.pop();
+				var a = r; r = p.pop();
 				if(c === ')') r.push(new Expr.Group(a));
 				else if(c === ']') r.push(new Expr.Composition(a));
 				else if(c === '}') r.push(new Expr.Fork(a));
@@ -137,52 +55,9 @@ var parse = function(s) {
 	}
 	if(b.length) err('unmatched brackets: ' + b.join(' '));
 	if(state !== START) err('parser error');
-	return new Expr.Composition(handleOps(r));
+	return new Program(r);
 };
 
-var quote = function(op) {
-	if(!(op instanceof Op)) return op;
-	if(!op.name) err('cannot quote operator ' + op);
-	return new Expr.Name(op.name);
-};
-var handleOps = function(a) {
-	var r = a.slice();
-	var o = a.filter(function(x) {return x instanceof Op})
-		.sort(function(a, b) {return a.precr < b.precl});
-	for(var i = 0, l = o.length; i < l; i++) {
-		var op = o[i], index = r.indexOf(op);
-		if(!op.call && !op.name) err('operator ' + op + ' unimplemented');
-		if(index === -1) continue;//err('cannot find operator ' + op);
-		if(op.args === 1) {
-			if(!r[index + 1]) r.splice(index, 1, quote(op));	
-			else {
-				var next = op.quoter? quote(r[index + 1]): r[index + 1];
-				r.splice(index, 2, op.call? op.call(next): new Expr.Call(quote(op), [next]));
-			}
-		} else if(op.args === 2) {
-			if(!r[index - 1] && !r[index + 1])
-				r.splice(index, 1, quote(op));	
-			else if(!r[index - 1])
-				r.splice(index, 2, new Expr.Call(new Expr.Name('rpapp'), [
-					quote(op),
-					op.quoter? quote(r[index + 1]): r[index + 1]
-				]));
-			else if(!r[index + 1])
-				r.splice(index - 1, 2, new Expr.Call(new Expr.Name('papp'), [
-					quote(op),
-					op.quotel? quote(r[index - 1]): r[index - 1]
-				]));
-			else {
-				var left = op.quotel? quote(r[index - 1]): r[index - 1];
-				var right = op.quoter? quote(r[index + 1]): r[index + 1];
-				r.splice(index - 1, 3, op.call? op.call(left, right): new Expr.Call(quote(op), [left, right]));
-			}
-		} else err('operator with invalid args ' + op);
-	}
-	return r;	
-};
-
-// terms
 var litc = function(x) {return x.isLiteral()? new Expr.Call(new Expr.Name('constant'), [x]): x};
 
 var Expr = {};
@@ -208,19 +83,6 @@ Expr.String.prototype.toString = function() {return '"' + this.val + '"'};
 Expr.String.prototype.toJS = function() {return '"' + this.val + '"'};
 Expr.String.prototype.isLiteral = function() {return true}; 
 
-Expr.App = function(fn, arg) {this.fn = fn; this.arg = arg};
-Expr.App.prototype = Object.create(Expr.Expr.prototype);
-Expr.App.prototype.toString = function() {
-	return (this.fn instanceof Expr.Name? this.fn: '(' + this.fn + ')') + '('+ this.arg + ')';
-};
-Expr.App.prototype.optimize = function() {
-	return new Expr.App(this.fn.optimize(), this.arg.optimize());
-}; 
-Expr.App.prototype.toJS = function() {
-	return (this.fn instanceof Expr.Name? this.fn.toJS(): '(' + this.fn.toJS() + ')') +
-		'('+ this.arg.toJS() + ')';
-};
- 
 Expr.Call = function(fn, args) {this.fn = fn; this.args = args};
 Expr.Call.prototype = Object.create(Expr.Expr.prototype);
 Expr.Call.prototype.toString = function() {
@@ -231,14 +93,14 @@ Expr.Call.prototype.optimize = function() {
 }; 
 Expr.Call.prototype.toJS = function() {
 	return (this.fn instanceof Expr.Name? this.fn.toJS(): '(' + this.fn.toJS() + ')') +
-		'('+ this.args.map(meth('toJS')).join(', ') + ')';
+		this.args.map(meth('toJS')).map(function(x) {return '(' + x + ')'}).join('');
 }; 
 
 Expr.Group = function(a) {this.val = a};
 Expr.Group.prototype = Object.create(Expr.Expr.prototype);
 Expr.Group.prototype.toString = function() {return '(' + this.val.join(' ') + ')'};
 Expr.Group.prototype.optimize = function() {
-	if(this.val.length === 0) err('empty group: ()');
+	if(this.val.length === 0) return new Expr.Name('null');
 	if(this.val.length === 1) return this.val[0].optimize();
 	return new Expr.Call(this.val[0], this.val.slice(1)).optimize();
 };
@@ -251,7 +113,7 @@ Expr.Composition.prototype = Object.create(Expr.Expr.prototype);
 Expr.Composition.prototype.toString = function() {return '[' + this.val.join(' ') + ']'};
 Expr.Composition.prototype.optimize = function() {
 	if(this.val.length === 0) return new Expr.Name('id');
-	if(this.val.length === 1) return new Expr.App(new Expr.Name('constant'), this.val[0].optimize());
+	if(this.val.length === 1) return new Expr.Call(new Expr.Name('constant'), [this.val[0].optimize()]);
 	var comp = new Expr.Name('comp');
 	return this.val.map(meth('optimize')).reduce(function(a, b) {
 		return new Expr.Call(comp, [litc(a).optimize(), litc(b).optimize()]);
@@ -319,228 +181,38 @@ Expr.Let.prototype.toJS = function() {
 	return '(function(' + this.name.toJS() + ') {return ' + this.body.toJS() + '})(' + this.arg.toJS() + ')';
 };
 
-// lib
-var Seq = {};
-Seq.Base = function() {};
-Seq.Base.prototype.map = function(f) {return new Seq.Map(this, f)};
-Seq.Base.prototype.filter = function(f) {return new Seq.Filter(this, f)};
-Seq.Base.prototype.reduce = function(f, v) {
-	this.forEach(function(x) {v = f(v, x)});
-	return v;
+var Program = function(a) {
+	var b = a.slice();
+	if(b.length % 2)
+		b.splice(b.length - 1, 0, new Expr.Name('main'));
+	this.defs = b;
 };
-Seq.Base.prototype.all = function(f) {
-	var r = true;
-	this.forEach(function(x) {return r = !f(x)});
-	return !r;
-};
-Seq.Base.prototype.none = function(f) {
-	var r = false;
-	this.forEach(function(x) {return r = f(x)});
-	return r;
-};
-Seq.Base.prototype.take = function(n) {
-	var r = []; if(n < 1) return r;
-	n--; this.forEach(function(x, i) {r.push(x); return !n--});
-	return new Seq.Array(r);
-};
-Seq.Base.prototype.collect = function() {
-	var r = [];
-	this.forEach(function(x, i) {r.push(x)});
-	return new Seq.Array(r);
-};
-Seq.Base.prototype.len = function() {
-	var n = 0;
-	this.forEach(function() {n++});
-	return n;
-};
-Seq.Base.prototype.last = function() {
-	var last;
-	this.forEach(function(x) {last = x});
-	return last;
-};
-
-Seq.Filter = function(s, f) {this.seq = s; this.fn = f};
-Seq.Filter.prototype = Object.create(Seq.Base.prototype);
-Seq.Filter.prototype.forEach = function(f) {
-	var fn = this.fn;
-	this.seq.forEach(function(x) {if(fn(x)) return f(x)});
-};
-Seq.Filter.prototype.toString = function() {return 'Filter'};
-
-Seq.Map = function(s, f) {this.seq = s; this.fn = f};
-Seq.Map.prototype = Object.create(Seq.Base.prototype);
-Seq.Map.prototype.forEach = function(f) {
-	var fn = this.fn;
-	this.seq.forEach(function(x) {return f(fn(x))});
-};
-Seq.Map.prototype.toString = function() {return 'Map'};
-
-Seq.Range = function(a, b) {
-	if(Array.isArray(a.a)) {
-		this.a = a.a[0]; 
-		this.b = b;
-		this.step = a.a[1];
-	} else {
-		this.a = a;
-		this.b = b;
-		this.step = this.a < this.b? 1: -1;
+Program.prototype.toString = function() {return 'Program(' + this.defs.join(' ') + ')'};
+Program.prototype.toJS = function() {
+	var names = [], defsjs = [], foundmain = false;
+	for(var i = 0, a = this.defs.map(meth('optimize')), l = a.length; i < l; i += 2) {
+		var name = a[i], def = a[i+1];
+		if(!(name instanceof Expr.Name)) err('definition must be a name');
+		if(name.val === 'main') foundmain = true;
+		names.push(name.toJS());
+		defsjs.push(name.toJS() + ' = ' + def.toJS());
 	}
-	if(this.step === 0 || (this.step > 0 && this.b < this.a) || (this.step < 0 && this.a < this.b))
-		err('invalid range (' + this.a + ', ' + this.step + '..' + this.b + ')');
+	if(!foundmain) err('no main function found');
+	return '(function() {var ' +
+		names.join(', ') + '; ' +
+		defsjs.join(';') + '; return ' +
+		(new Expr.Call(new Expr.Name('main'), [new Expr.Name('null')])).toJS() +
+	'})()';
 };
-Seq.Range.prototype = Object.create(Seq.Base.prototype);
-Seq.Range.prototype.forEach = function(f) {
-	if(this.step > 0) {
-		for(var i = this.a, j = 0, b = this.b, s = this.step; i <= b; i += s, j++) if(f(i, j)) break;
-	} else {
-		for(var i = this.a, j = 0, b = this.b, s = this.step; i >= b; i += s, j++) if(f(i, j)) break;
-	}
-};
-Seq.Range.prototype.last = function() {return this.b};
-Seq.Range.prototype.toString = function() {return '(' + this.a + ', ' + this.step + '..' + this.b + ')'};
 
-Seq.Array = function(a) {this.a = a};
-Seq.Array.prototype = Object.create(Seq.Base.prototype);
-Seq.Array.prototype.forEach = function(f) {
-	for(var i = 0, a = this.a, l = a.length; i < l; i++) if(f(a[i], i)) break;
-};
-Seq.Array.prototype.len = function() {return this.a.length};
-Seq.Array.prototype.last = function() {var a = this.a; return a[a.length-1]};
-Seq.Array.prototype.toString = function() {return show(this.a)};
-
-Seq.LazySeq = function(x, f) {this.start = x; this.fn = f};
-Seq.LazySeq.prototype = Object.create(Seq.Base.prototype);
-Seq.LazySeq.prototype.forEach = function(f) {
-	for(var i = this.start, fn = this.fn, j = 0;; i = fn(i), j++) if(f(i, j)) break;
-};
-Seq.LazySeq.prototype.toString = function() {return 'LazySeq'};
-
+///
 var id = function(x) {return x};
+var cons = function(x) {return function(y) {return x}};
 
-var neg = function(x) {return -x};
-var sq = function(x) {return x * x};
-var sqrt = function(x) {return Math.sqrt(x)};
-var abs = function(x) {return Math.abs(x)};
-var floor = function(x) {return Math.floor(x)};
-var ceil = function(x) {return Math.ceil(x)};
-var round = function(x) {return Math.round(x)};
-var inc = function(x) {return x + 1};
-var dec = function(x) {return x - 1};
-var add = function(x, y) {return x + y};
-var mul = function(x, y) {return x * y};
-var sub = function(x, y) {return x - y};
-var div = function(x, y) {return x / y};
-var idiv = function(x, y) {return Math.floor(x / y)};
-var rem = function(x, y) {return x % y};
-var mod = function(x, y) {return ((x % y) + y) % y};
-var pow = function(x, y) {return Math.pow(x, y)};
-var divisible = function(x, y) {return x % y === 0};
-var max = function(x, y) {return Math.max(x, y)};
-var min = function(x, y) {return Math.min(x, y)};
+var add = function(x) {return function(y) {return x + y}};
+var mul = function(x) {return function(y) {return x * y}};
+///
 
-var eq = function(x, y) {return x === y};
-var neq = function(x, y) {return x !== y};
-var gt = function(x, y) {return x > y};
-var lt = function(x, y) {return x < y};
-var geq = function(x, y) {return x >= y};
-var leq = function(x, y) {return x <= y};
-
-var and = function(x, y) {return x && y};
-var or = function(x, y) {return x || y};
-var not = function(x) {return !x};
-
-var wrapany = function(x) {return [x]};
-var wrap = function(x) {return Array.isArray(x)? x: [x]};
-var to = function(x, y) {return typeof y === 'function'? new Seq.LazySeq(x, y): new Seq.Range(x, y)};
-var until = function(x, y) {return new Seq.Range(x, y - 1)};
-var pair = function(x, y) {return new Seq.Array([x, y])};
-var concat = function(a, b) {return wrap(a).concat(wrap(b))};
-var concatarr = function(a, b) {return wrap(a).concat([b])};
-
-var each = function(f) {return a.forEach(f)};
-var filter = function(f, a) {return a.filter(f)};
-var len = function(a) {return a.len()};
-var count = function(f, a) {return a.reduce(function(x) {return f(x)? x + 1: x}, 0)};
-var none = function(f, a) {return a.none(f)};
-var all = function(f, a) {return a.all(f)};
-var map = function(f, a) {return a.map(f)};
-var fold = foldL = function(f, v, a) {return a.reduce(f, v)};
-//var foldR = function(f, v, a) {return a.reduceRight(f, v)};
-var reduce = function(f, a) {return a.reduce(f)};
-//var reduceR = function(f, a) {return a.reduceRight(f)};
-//var reverse = function(a) {return a.slice().reverse()};
-//var sort = function(a) {return a.sort(sub)};
-var sum = function(a) {return a.reduce(add, 0)};
-var product = function(a) {return a.reduce(mul, 1)};
-var maxl = function(a) {return a.reduce(max, -Number.MAX_VALUE)};
-var minl = function(a) {return a.reduce(min, Number.MAX_VALUE)};
-var take = function(n, a) {return a.take(n)};
-var collect = function(a) {return a.collect()};
-var last = function(a) {return a.last()};
-
-var index = function(i, a) {return a[i]};
-
-var constant = function(x) {return function(y) {return x}};
-var fn = function(x) {return typeof x === 'function'? x: constant(x)};
-var papp = function(f, x) {return function() {return f.apply(this, [x].concat(Array.prototype.slice.call(arguments)))}};
-var rpapp = function(f, x) {return function(y) {return f.apply(this, [y, x].concat(Array.prototype.slice.call(arguments, 1)))}};
-var comp = function(f, g) {return function() {return fn(g)(fn(f).apply(this, arguments))}};
-var fork = function(a, b, c) {return function() {return fn(b)(fn(a).apply(this, arguments), fn(c).apply(this, arguments))}};
-var cond = function(a, b, c) {return function() {return fn(a).apply(this, arguments)? fn(b).apply(this, arguments): fn(c).apply(this, arguments)}};
-var app = function(f, a) {return f.apply(this, a)};
-var call = function(f, x) {return f(x)};
-var call2 = function(f, x, y) {return f(x, y)};
-var revf = function(f) {return function() {return f.apply(this, Array.prototype.slice.call(arguments).reverse())}};
-
-// commandline/repl
-if(typeof global != 'undefined' && global) {
-	// Export
-	// if(module && module.exports) module.exports = Poffer;
-	// Commandline
-	if(require.main === module) {
-		var args = process.argv.slice(2), l = args.length;
-		if(l === 0) {
-			var readline = require('readline').createInterface(process.stdin, process.stdout);
-			// REPL
-			console.log('Poffer v'+version+' REPL');
-			process.stdin.setEncoding('utf8');
-			function input() {
-				readline.question('> ', function(inp) {
-					if(inp.trim()) {
-						try {
-							var p = parse(inp);
-							console.log('' + p);
-							var o = p.optimize();
-							console.log('' + o);
-							var j = o.toJS();
-							console.log('' + j);
-							var t = Date.now();
-							var e = eval(j);
-							var T = Date.now() - t;
-							console.log('' + show(e));
-							console.log('' + show(e()));
-							console.log(T + 'ms');
-						} catch(error) {
-							console.log('' + error);
-						}
-					}
-					setTimeout(input(), 0);
-				});
-			};
-			input();
-		} else {
-			var _f = args[0];
-			var _t = args[1];
-			if(_f) {
-				var fs = require('fs');
-				fs.readFile(_f, 'ascii', function(e, s) {
-					if(e) console.log('Error: ', e);
-					else if(_t === '--run' || _t === '-r')
-						eval(Nanobe.compile(s));
-					else console.log(Nanobe.compile(s));
-				});
-			}
-		}
-	}
-}
-
+var scr = '(cons (add 1 (mul 2 3)))';
+console.log(parse(scr).toJS());
+console.log(eval(parse(scr).toJS()));
