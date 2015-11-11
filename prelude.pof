@@ -1,19 +1,11 @@
-%export all
+%include native.js
 
-id      #(0)
-flip    #(0 2 1)
-lift    #(0 (1 2))
-comp    lift
+id      #x.x
+const   #xy.x
+flip    #fxy.fyx
+lift    #fgx.f.gx
+lift2   #fghxy.f.gx.hy
 
 left    const
-right   const/id
-
-mod     ^{left rem right add right rem right}
-
-head    .0
-tail    slice/1
-reduce  ~([head ~fold ~] ^^/ tail)
-reducel reduce
-sum     fold/add/0
-product fold/mul/1
+right   (const id)
 

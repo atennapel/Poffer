@@ -5,12 +5,19 @@
  */
 var version = '0.0.1';
 
+var allUniq = function(a) {
+	for(var i = 0, o = {}, l = a.length; i < l; i++) {
+		if(o[a[i]]) return false;
+		o[a[i]] = true;
+	}
+	return true;
+};
 var show = function(x) {return Array.isArray(x)? '[' + x.map(show).join(', ') + ']': '' + x};
-var meth = function(m) {return function(x) {return x[m]()}};
+var meth = function(m, x, y, z) {return function(x) {return x[m](x, y, z)}};
 var err = function(m) {throw new Error(m)};
 
 var parse = function(s) {
-	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4, BLOCKCOMMENT = 5;
+	var START = 0, NAME = 1, NUMBER = 2, COMMENT = 3, STRING = 4, BLOCKCOMMENT = 5, HASH = 6;
 	var state = START, p = [], r = [], t = [], b = [], esc = false;
 	for(var i = 0, l = s.length; i <= l; i++) {
 		var c = s[i] || '\n';
@@ -19,6 +26,7 @@ var parse = function(s) {
 			if(c === ';' && s[i+1] === ';' && s[i+2] === ';') state = BLOCKCOMMENT, i += 2;
 			else if(c === ';' && s[i+1] === ';') state = COMMENT, i++;
 			else if(c === '"') state = STRING;
+			else if(c === '#') state = HASH;
 			else if(c === '(' || c === '[' || c === '{') b.push(c), p.push(r), r = [];
 			else if(/[a-z]/i.test(c)) t.push(c), state = NAME;
 			else if(/[0-9]/.test(c)) t.push(c), state = NUMBER;
@@ -50,6 +58,10 @@ var parse = function(s) {
 			else if(c === '\\') t.push(c), esc = true;
 			else if(c === '"') r.push(new Expr.String(t.join(''))), t = [], state = START;
 			else t.push(c);
+		} else if(state === HASH) {
+			if(!/[a-z0-9\.]/i.test(c))
+				r.push(new Expr.Combinator(t.join(''))), t = [], i--, state = START;
+			else t.push(c);
 		}
 		// console.log('>' + i + ' ' + c + ' ' + show(r) + ' ' + show(p));
 	}
@@ -57,8 +69,6 @@ var parse = function(s) {
 	if(state !== START) err('parser error');
 	return new Program(r);
 };
-
-var litc = function(x) {return x.isLiteral()? new Expr.Call(new Expr.Name('constant'), [x]): x};
 
 var Expr = {};
 Expr.Expr = function() {};
@@ -116,7 +126,7 @@ Expr.Composition.prototype.optimize = function() {
 	if(this.val.length === 1) return new Expr.Call(new Expr.Name('constant'), [this.val[0].optimize()]);
 	var comp = new Expr.Name('comp');
 	return this.val.map(meth('optimize')).reduce(function(a, b) {
-		return new Expr.Call(comp, [litc(a).optimize(), litc(b).optimize()]);
+		return new Expr.Call(comp, [a.optimize(), b.optimize()]);
 	}).optimize();
 };
 
@@ -127,7 +137,7 @@ Expr.Fork.prototype.optimize = function() {
 	if(this.val.length === 0) return new Expr.Name('id');
 	if(this.val.length === 1) return new Expr.Fork([new Expr.Name('id'), this.val[0], new Expr.Name('id')]).optimize();
 	if(this.val.length % 2 === 0) return new Expr.Fork(this.val.concat([new Expr.Name('id')])).optimize();
-	var a = this.val.map(litc).map(meth('optimize')), fork = new Expr.Name('fork');
+	var a = this.val.map(meth('optimize')), fork = new Expr.Name('fork');
 	var c = new Expr.Call(fork, [a[0], a[1], a[2]]);
 	for(var i = 3, l = a.length; i < l; i += 2) c = new Expr.Call(fork, [c, a[i], a[i+1]]);
 	return c.optimize();
@@ -140,7 +150,7 @@ Expr.Cond.prototype.optimize = function() {
 	if(this.val.length === 0) return new Expr.Name('id');
 	if(this.val.length === 1) return this.val[0].optimize();
 	if(this.val.length % 2 === 0) return new Expr.Cond(this.val.concat([new Expr.Name('id')])).optimize();
-	var a = this.val.map(litc).map(meth('optimize')), cond = new Expr.Name('cond');
+	var a = this.val.map(meth('optimize')), cond = new Expr.Name('cond');
 	var c = new Expr.Call(cond, [a[a.length-3], a[a.length-2], a[a.length-1]]);
 	for(var i = a.length - 4; i >= 0; i -= 2) c = new Expr.Call(cond, [a[i-1], a[i], c]);
 	return c.optimize();
@@ -181,6 +191,21 @@ Expr.Let.prototype.toJS = function() {
 	return '(function(' + this.name.toJS() + ') {return ' + this.body.toJS() + '})(' + this.arg.toJS() + ')';
 };
 
+Expr.Combinator = function(body) {this.body = body};
+Expr.Combinator.prototype = Object.create(Expr.Expr.prototype);
+Expr.Combinator.prototype.toString = function() {return '#' + this.body};
+Expr.Combinator.prototype.toJS = function() {
+	var s = this.body.split('.');
+	var args = s[0].split(''), l = args.length;
+	var body = s.slice(1)
+		.map(function(x) {return x.split('').map(function(x) {return new Expr.Name(x)})})
+		.map(function(a) {return a.length === 1? a[0]: new Expr.Call(a[0], a.slice(1))});
+	body = body.length === 1? body[0]: new Expr.Call(body[0], body.slice(1));
+	args = args.map(function(x) {return 'function(' + x + '){return '}).join('');
+	for(var i = 0, t = []; i < l; i++) t.push('}');
+	return args + body + t.join('');
+};
+
 var Program = function(a) {
 	var b = a.slice();
 	if(b.length % 2)
@@ -207,12 +232,13 @@ Program.prototype.toJS = function() {
 
 ///
 var id = function(x) {return x};
-var cons = function(x) {return function(y) {return x}};
+var K = function(x) {return function(y) {return x}};
 
 var add = function(x) {return function(y) {return x + y}};
 var mul = function(x) {return function(y) {return x * y}};
 ///
 
-var scr = '(cons (add 1 (mul 2 3)))';
-console.log(parse(scr).toJS());
-console.log(eval(parse(scr).toJS()));
+var scr = '(K (#xy.x 5 6))';
+var parsed = parse(scr).toJS();
+console.log(parsed);
+console.log(eval(parsed));
