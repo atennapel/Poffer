@@ -128,6 +128,13 @@ T.Bool = T.con('Bool', K.star);
 T.Str = T.con('Str', K.star);
 T.List = T.con('List', K.fn(K.star, K.star));
 T.Fn = T.con('Fn', K.fn(K.star, K.star, K.star));
+T.fn = function() {
+	if(arguments.length === 0) return T.Fn;
+	if(arguments.length === 1) return T.app(T.Fn, arguments[0]);
+	return Array.prototype.reduceRight.call(arguments, function(a, b) {
+		return T.app(T.Fn, b, a);
+	});
+};
 
 T.free = function(t) {
 	if(t instanceof T.Var) return Set.of(t.id);
@@ -238,9 +245,11 @@ var t = T.var(K.star, 't'), f = T.var(K.fn(K.star, K.star), 'f');
 var a = T.var(K.star, 'a'), b = T.var(K.star, 'b');
 var env = new Map({
 	i0: T.Int,
-	isZero: T.app(T.Fn, T.Int, T.Bool),
-	map: T.app(T.Fn, T.app(T.Fn, a, b), T.app(T.Fn, T.app(f, a), T.app(f, b))),
+	isZero: T.fn(T.Int, T.Bool),
+	not: T.fn(T.Bool, T.Bool),
+	map: T.fn(T.fn(a, b), T.app(f, a), T.app(f, b)),
 	lInt: T.app(T.List, T.Int),
+	lBool: T.app(T.List, T.Bool),
 }); 
 
 var exprs = [
@@ -250,16 +259,20 @@ var exprs = [
 	'map',
 	E.app('map', 'isZero'),
 	E.app('map', 'isZero', 'lInt'),
+	E.app('map', 'isZero', 'lBool'),
+	E.app('map', 'not', 'lBool'),
 ];
 
 exprs.forEach(function(e) {
+	var e = E.wrap(e);
+	console.log('' + e);
 	try {
-		var res = E.infer(E.wrap(e), env);
+		var res = E.infer(e, env);
 		console.log('' + res.type);
 		console.log('' + res.sub);
-		console.log();
 	} catch(err) {
 		console.log('' + err);
 	}
+	console.log();
 });
 
