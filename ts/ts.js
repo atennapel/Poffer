@@ -122,11 +122,6 @@ T.Scheme = function(bound, type) {this.bound = bound; this.type = type};
 T.Scheme.prototype.toString = function() {return '\\' + this.bound + ' ' + this.type};
 T.scheme = function(bound, type) {return new T.Scheme(bound, type)};
 
-T.Int = T.con('Int', K.star);
-T.Float = T.con('Float', K.star);
-T.Bool = T.con('Bool', K.star);
-T.Str = T.con('Str', K.star);
-T.List = T.con('List', K.fn(K.star, K.star));
 T.Fn = T.con('Fn', K.fn(K.star, K.star, K.star));
 T.fn = function() {
 	if(arguments.length === 0) return T.Fn;
@@ -201,8 +196,6 @@ T.unify = function(a, b) {
 // exprs
 var E = {};
 
-E.wrap = function(x) {return typeof x === 'string'? E.id(x): x};
-
 E.Id = function(id) {this.id = id};
 E.Id.prototype.toString = function() {return this.id};
 E.id = function(id) {return new E.Id(id)};
@@ -212,7 +205,7 @@ E.App.prototype.toString = function() {return '(' + this.fn + ' ' + this.arg + '
 E.app = function() {
 	if(arguments.length < 2) terr('too few arguments for application');
 	return Array.prototype.reduce.call(arguments,
-		function(a, b) {return new E.App(E.wrap(a), E.wrap(b))});
+		function(a, b) {return new E.App(a, b)});
 };
 
 E.Result = function(sub, type) {this.sub = sub; this.type = type};
@@ -241,30 +234,45 @@ E.infer = function(expr, env) {
 };
 
 // testing
-var t = T.var(K.star, 't'), f = T.var(K.fn(K.star, K.star), 'f');
-var a = T.var(K.star, 'a'), b = T.var(K.star, 'b');
+var Int = T.con('Int', K.star);
+var Float = T.con('Float', K.star);
+var Bool = T.con('Bool', K.star);
+var Str = T.con('Str', K.star);
+var List = T.con('List', K.fn(K.star, K.star));
+var fn = T.fn, app = T.app;
+var g = function(f) {
+	for(var i = 0, r = [], l = f.length; i < l; i++) r.push(T.var(K.star));
+	return f.apply(null, r);
+};
+var f = T.var(K.fn(K.star, K.star), 'f');
 var env = new Map({
-	i0: T.Int,
-	isZero: T.fn(T.Int, T.Bool),
-	not: T.fn(T.Bool, T.Bool),
-	map: T.fn(T.fn(a, b), T.app(f, a), T.app(f, b)),
-	lInt: T.app(T.List, T.Int),
-	lBool: T.app(T.List, T.Bool),
+	i0: Int,
+	isZero: fn(Int, Bool),
+	not: fn(Bool, Bool),
+	map: g(function(a, b) {return fn(fn(a, b), app(f, a), app(f, b))}),
+	lInt: app(List, Int),
+	lBool: app(List, Bool),
+	flip: g(function(a, b, r) {return fn(fn(a, b, r), b, a, r)}),
 }); 
 
+var call = E.app, i = E.id;
 var exprs = [
-	'i0',
-	'isZero',
-	E.app('isZero', 'i0'),
-	'map',
-	E.app('map', 'isZero'),
-	E.app('map', 'isZero', 'lInt'),
-	E.app('map', 'isZero', 'lBool'),
-	E.app('map', 'not', 'lBool'),
+	i('i0'),
+	i('isZero'),
+	call(i('isZero'), i('i0')),
+	i('map'),
+	call(i('map'), i('isZero')),
+	call(i('map'), i('isZero'), i('lInt')),
+	call(i('map'), i('isZero'), i('lBool')),
+	call(i('map'), i('not'), i('lBool')),
+
+	i('flip'),
+	call(i('flip'), i('map')),
+	call(i('flip'), i('map'), i('lInt')),
+	call(i('flip'), i('map'), i('lBool')),
 ];
 
 exprs.forEach(function(e) {
-	var e = E.wrap(e);
 	console.log('' + e);
 	try {
 		var res = E.infer(e, env);
