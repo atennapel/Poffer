@@ -216,13 +216,6 @@ T.Implicit = function(t, r) {this.type = t; this.ret = r; this.kind = T.kind(r)}
 T.Implicit.prototype.toString = function() {return '(' + this.type + ' => ' + this.ret + ')'};
 T.im = function(t, r) {return new T.Implicit(t, r)};
 
-T.Union = function(a) {
-	this.a = a;
-	this.kind = T.kind(a[0]);
-};
-T.Union.prototype.toString = function() {return '(' + this.a.join(' | ') + ')'};
-T.union = function(a) {return new T.Union(a)};
-
 T.Scheme = function(bound, type) {this.bound = bound; this.type = type};
 T.Scheme.prototype.toString = function() {return '\\' + this.bound + ' ' + this.type};
 T.scheme = function(bound, type) {return new T.Scheme(bound, type)};
@@ -234,7 +227,6 @@ T.free = function(type) {
 	if(type instanceof T.Implicit) return T.free(type.type).union(T.free(type.ret));
 	if(type instanceof T.Record) return type.rest? T.free(type.rest).union(T.free(type.map)): T.free(type.map);
 	if(type instanceof T.Scheme) return T.free(type.type).difference(type.bound);
-	if(type instanceof T.Union) return type.a.reduce(function(s, t) {return s.union(T.free(t))}, Set.empty);
 	if(type instanceof Map) return Set.flatten(type.vals().map(T.free));
 	if(type instanceof Env) return Set.flatten(type.vals().map(T.free));
 	terr('type missed in free: ' + type);
@@ -263,8 +255,6 @@ T.substitute = function(sub, t) {
 		var nsub = sub.filter(function(_, id) {return !t.bound.has(id)});
 		return T.scheme(t.bound, T.substitute(nsub, t.type));
 	}
-	if(t instanceof T.Union)
-		return T.union(t.a.map(function(ty) {return T.substitute(sub, ty)}));
 	if(t instanceof Map) return t.map(function(v) {return T.substitute(sub, v)});
 	if(t instanceof Env) return t.map(function(v) {return T.substitute(sub, v)});
 	terr('substitution failed: ' + sub + ' over ' + t);
@@ -286,7 +276,6 @@ T.kind = function(t) {
 	if(t instanceof T.Var) return t.kind;
 	if(t instanceof T.Con) return t.kind;
 	if(t instanceof T.App) return t.kind;
-	if(t instanceof T.Union) return t.kind;
 	if(t instanceof T.Record) return K.star;
 	if(t instanceof T.Implicit) return t.kind;
 	if(t instanceof T.Scheme) return t.type.kind;
@@ -300,15 +289,21 @@ T.zip = function(a, b) {
 };
 
 T.Error = function(msg) {this.msg = msg};
-T.Error.prototype.toString = function() {return 'TError: ' + this.msg};
+T.Error.prototype.toString = function() {return 'TError(' + this.msg + ')'};
 T.Error.prototype.error = function() {throw new TypeError(this.msg)};
 T.error = function(msg) {return new T.Error(msg)};
 
-T.unifySafe = function(a, b) {
-	// console.log('unifySafe ' + a + ' ; ' + b);
+T.ImplicitResult = function(id, sub) {this.id = id; this.sub = sub};
+T.ImplicitResult.prototype.toString = function() {return 'TImplicit(' + this.id + ', ' + this.sub + ')'};
+T.implicitResult = function(id, sub) {return new T.ImplicitResult(id, sub)};
+
+T.unifySafe = function(a, b, env) {
+	console.log('unifySafe ' + a + ' ; ' + b);
+	console.log('' + env);
 	if(!K.eq(T.kind(a), T.kind(b)))
 		return T.error('unification failed for ' + a + ' and ' + b + ', unmatched kinds ' + T.kind(a) + ' and ' + T.kind(b));
 	if(a instanceof T.Var) {
+		console.log('var');
 		if(a === b) return Map.empty;
 		if(T.occursIn(a, b)) return T.error('recursive unification: ' + a + ' and ' + b);
 		var ka = a.kind, kb = T.kind(b);
@@ -316,17 +311,23 @@ T.unifySafe = function(a, b) {
 			return T.error('unification failed for ' + a + ' and ' + b + ', unmatched kinds ' + ka + ' and ' + kb);
 		return Map.of(a.id, b);
 	}
-	if(b instanceof T.Var) return T.unifySafe(b, a);
+	if(b instanceof T.Var) return T.unifySafe(b, a, env);
 	if(a instanceof T.Con && b instanceof T.Con && a.name === b.name && K.eq(a.kind, b.kind))
 		return Map.empty;
 	if(a instanceof T.App && b instanceof T.App) {
-		var sub = T.unifySafe(a.con, b.con);
+		console.log('app');
+		var sub = T.unifySafe(a.con, b.con, env);
 		if(sub instanceof T.Error) return sub;
-		var subr = T.unifySafe(T.substitute(sub, a.arg), T.substitute(sub, b.arg));
+		var subr = T.unifySafe(
+			T.substitute(sub, a.arg),
+			T.substitute(sub, b.arg),
+			T.substitute(sub, env)
+		);
 		if(subr instanceof T.Error) return subr;
 		return sub.union(subr);
 	}
 	if(a instanceof T.Record && b instanceof T.Record) {
+		console.log('record');
 		var ka = Set.fromArray(a.map.keys());
 		var kb = Set.fromArray(b.map.keys());
 		if(ka.isSubsetOf(kb)) {
@@ -337,29 +338,56 @@ T.unifySafe = function(a, b) {
 				if(sub instanceof T.Error) return sub;
 				var nsub = T.unifySafe(
 					T.substitute(sub, types[0]),
-					T.substitute(sub, types[1])
+					T.substitute(sub, types[1]),
+					T.substitute(sub, env)
 				);
 				if(nsub instanceof T.Error) return nsub;
 				return sub.union(nsub);
 			}, Map.empty);
 			if(sub instanceof T.Error) return sub;
 			var rest = T.record(kb.difference(ka).toMap(function(k) {return [k, b.map.get(k)]}), b.rest);
-			var subr = T.unifySafe(T.substitute(sub, a.rest), T.substitute(sub, rest));
+			var subr = T.unifySafe(
+				T.substitute(sub, a.rest),
+				T.substitute(sub, rest),
+				T.substitute(sub, env)
+			);
 			if(subr instanceof T.Error) return subr;
 			return sub.union(subr);
 		}
 	}
-	if(a instanceof T.Union) {
-		for(var i = 0, ar = a.a, l = ar.length; i < l; i++) {
-			var sub = T.unifySafe(ar[i], b);
-			if(!(sub instanceof T.Error)) return sub;
+	if(a instanceof T.Implicit) {
+		console.log('implicit');
+		var it = a.type, ir = a.ret;
+		console.log('find implicit for ' + it);
+		var sub = T.unifySafe(ir, b, env);
+		if(sub instanceof T.Error) return sub;
+		console.log('implicit sub ' + ir + ' ; ' + b + ' -> ' + sub);
+		var its = T.substitute(sub, it);
+		var irs = T.substitute(sub, ir);
+		var nenv = T.substitute(sub, env);
+		console.log('implicit type ' + its);
+		var implicits = [];
+		for(var i = 0, ks = env.keys(), l = ks.length; i < l; i++) {
+			var id = ks[i], t = env.get(id);
+			console.log('implicit candidate ' + id + ' ' + t);
+			var subr = T.unifySafe(its, T.substitute(sub, t), nenv);
+			if(!(subr instanceof T.Error)) {
+				console.log('implicit found ' + subr);
+				implicits.push(subr.union(sub));
+			}
 		}
+		if(implicits.length === 0) terr('no implicit found for ' + its);
+		if(implicits.length === 1) return implicits[0];
+		return Set.empty;
+		//terr();
 	}
+	if(b instanceof T.Implicit)
+		return T.error('implicit on right side in ' + a + ' and ' + b);
 	return T.error('unification failed for ' + a + ' and ' + b);
 };
 
-T.unify = function(a, b) {
-	var r = T.unifySafe(a, b);
+T.unify = function(a, b, env) {
+	var r = T.unifySafe(a, b, env);
 	if(r instanceof T.Error) r.error();
 	return r;
 };
@@ -380,7 +408,7 @@ E.app = function() {
 };
 
 E.Lam = function(arg, body) {this.arg = arg; this.body = body};
-E.Lam.prototype.toString = function() {return '(' + this.arg + ' => ' + this.body + ')'};
+E.Lam.prototype.toString = function() {return '(\\' + this.arg + ' -> ' + this.body + ')'};
 E.lam = function() {
 	if(arguments.length < 2) terr('too few arguments for lambda');
 	return Array.prototype.reduceRight.call(arguments,
@@ -399,40 +427,21 @@ E.result = function(sub, type) {return new E.Result(sub, type)};
 
 E.infer = function(expr, env) {
 	var env = env || Env.empty;
-	// console.log('infer ' + expr);
+	console.log('infer ' + expr);
 	if(expr instanceof E.Id) {
-		if(env.has(expr.id)) {
-			var type = env.get(expr.id);
-			if(type instanceof T.Implicit) {
-				var it = type.type, ir = type.ret;
-				console.log('find implicit for ' + it);
-				var implicits = [];
-				for(var i = 0, ks = env.keys(), l = ks.length; i < l; i++) {
-					var id = ks[i], t = env.get(id);
-					if(t instanceof T.Scheme) t = t.type;
-					var sub = T.unifySafe(it, t);
-					if(!(sub instanceof T.Error)) {
-						console.log('implicit found ' + id + ' ' + t);
-						implicits.push(T.substitute(sub, ir));
-					}
-				}
-				if(!implicits.length) terr('no implicit found for ' + it);
-				console.log('implicits: ' + implicits.join(' '));
-				if(implicits.length === 1) return E.result(Map.empty, implicits[0]);
-				return E.result(Map.empty, T.union(implicits));
-			}
-			return E.result(Map.empty, type);
-		}
+		if(env.has(expr.id)) return E.result(Map.empty, env.get(expr.id));
 		terr('unknown symbol ' + expr);
 	}
 	if(expr instanceof E.App) {
 		var sub = Map.empty;
 		var o = E.infer(expr.fn, env);
 		sub = sub.union(o.sub);
-		var k = E.infer(expr.arg, T.substitute(sub, env));
+		var nenv = T.substitute(sub, env);
+		var k = E.infer(expr.arg, nenv);
 		sub = sub.union(k.sub);
 		var t = T.var(K.star);
-		var s = T.unify(T.substitute(sub, o.type), T.substitute(sub,T.app(T.Fn, k.type, t)));
+		nenv = T.substitute(sub, env);
+		var s = T.unify(T.substitute(sub, o.type), T.substitute(sub,T.app(T.Fn, k.type, t)), nenv);
 		sub = sub.union(s);
 		return E.result(sub, t).substitute();
 	}
@@ -447,7 +456,8 @@ E.infer = function(expr, env) {
 		var u = T.var(K.star);
 		var tmp = E.infer(expr.val, env.add(expr.arg, u));
 		var s1 = tmp.sub, t1 = tmp.type;
-		var s2 = T.unify(t1, T.substitute(s1, u));
+		var nenv = T.substitute(s1, env);
+		var s2 = T.unify(t1, T.substitute(s1, u), nenv);
 		var s2t1 = T.substitute(s2, t1);
 		s1 = s1.union(s2);
 		new_env = T.substitute(s1, env);
@@ -481,29 +491,42 @@ var Monoid = T.con('Monoid', K.fn(K.star, K.star));
 
 var f = T.var(K.fn(K.star, K.star), 'f');
 var env = Env.fromArray([
-	'Monoid', g(function(t) {return fn(fn(t, t, t), t, T.app(Monoid, t))}),
+	//'Monoid', g(function(t) {return fn(fn(t, t, t), t, T.app(Monoid, t))}),
 	
-	'add', fn(Int, Int, Int),
+	//'add', fn(Int, Int, Int),
 	'zero', Int,
 	's', Str,
-	'b', Bool,
+	//'b', Bool,
 
-	'append', g(function(t) {return im(T.app(Monoid, t), fn(t, t, t))}),
-	'unit', g(function(t) {return im(T.app(Monoid, t), t)}),
+	//'append', g(function(t) {return im(T.app(Monoid, t), fn(t, t, t))}),
+	//'unit', g(function(t) {return im(T.app(Monoid, t), t)}),
 
-	'StrMonoid', T.app(Monoid, Str),
-	'BoolMonoid', T.app(Monoid, Bool),
+	//'StrMonoid', T.app(Monoid, Str),
+	//'BoolMonoid', T.app(Monoid, Bool),
 
-	'nv', T.app(Val, Int),
-	'sv', T.app(Val, Str),
-	'bv', T.app(Val, Bool),
+	//'nv', T.app(Val, Int),
+	//'sv', T.app(Val, Str),
+	//'bv', T.app(Val, Bool),
 
-	'val', g(function(t) {return im(T.app(Val, t), t)}),
+	//'val', g(function(t) {return im(T.app(Val, t), t)}),
+
+	'Show', g(function(t) {return fn(fn(t, Str), T.app(Show, t))}),
+	'show', g(function(t) {return fn(im(T.app(Show, t), t), Str)}),
+	'ShowInt', T.app(Show, Int),
+	'ShowStr', T.app(Show, Str),
+	'ShowBool', T.app(Show, Bool),
+
+	'parseInt', fn(Str, Int),
 ]);
 
 var call = E.app, i = E.id, lam = E.lam, let = E.let;
 var exprs = [
-	lam('x', call(i('append'), i('zero'), i('x'))),
+	//i('Show'),
+	i('show'),
+	//i('ShowInt'),
+	call(i('show'), i('s')),
+	call(i('show'), i('zero')),
+	lam('x', call(i('show'), call(i('parseInt'), i('x')))),
 ];
 
 exprs.forEach(function(e) {
