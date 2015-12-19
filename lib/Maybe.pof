@@ -1,0 +1,11 @@
+%type Maybe t
+%case Nothing
+%case Just t
+
+maybeMap #f #m ?? {
+	Nothing Nothing
+	Just [f Just]
+}
+
+MaybeFunctor Functor/maybeMap
+

@@ -1,0 +1,18 @@
+%type SemiGroup t
+%case SemiGroup t -> t -> t
+
+%type Monoid t
+%case Monoid (SemiGroup t) => t
+
+%implicit SemiGroup t
+append ?? { SemiGroup id }
+
+%implicit Monoid t
+unit ?? { Monoid id }
+
+%type Functor f
+%case Functor (a -> b) -> f a -> f b
+
+%implicit Functor f
+map ?? { Functor id }
+
