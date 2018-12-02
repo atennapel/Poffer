@@ -1,4 +1,4 @@
-import { Expr, Var, appFrom, Abs } from './exprs';
+import { Expr, Var, appFrom, Abs, App } from './exprs';
 import { any } from './utils';
 
 function matchingBracket(c: string) {
@@ -15,10 +15,12 @@ type Bracket = '[' | '{' | '(';
 
 type Token
   = { tag: 'name', val: string }
+  | { tag: 'number', val: number }
   | { tag: 'list', val: Token[], br: Bracket };
 
 const START = 0;
 const NAME = 1;
+const NUMBER = 2;
 
 function tokenize(s: string): Token[] {
   let state = START;
@@ -28,6 +30,7 @@ function tokenize(s: string): Token[] {
     const c = s[i] || ' ';
     if (state === START) {
       if (/[a-z\:\_]/i.test(c)) t += c, state = NAME;
+      else if (/[0-9]/.test(c)) t += c, state = NUMBER;
       else if(c === '(' || c === '{' || c === '[') b.push(c), p.push(r), r = [];
       else if(c === ')' || c === '}' || c === ']') {
         if(b.length === 0) throw new SyntaxError(`unmatched bracket: ${c}`);
@@ -40,6 +43,9 @@ function tokenize(s: string): Token[] {
       else throw new SyntaxError(`invalid char: ${c}`);
     } else if (state === NAME) {
       if(!/[a-z0-9\_\!]/i.test(c)) r.push({ tag: 'name', val: t }), t = '', i--, state = START;
+      else t += c;
+    } else if (state === NUMBER) {
+      if(!/[0-9]/.test(c)) r.push({ tag: 'number', val: parseInt(t, 10) }), t = '', i--, state = START;
       else t += c;
     }
   }
@@ -64,6 +70,10 @@ function exprs(r: Token[], br: Bracket = '['): Expr {
 function expr(r: Token): Expr {
   switch(r.tag) {
     case 'name': return Var(r.val);
+    case 'number':
+      let c: Expr = Var('Zero');
+      for(let i = 0; i < r.val; i ++) c = App(Var('Succ'), c);
+      return c;
     case 'list': return exprs(r.val, r.br);
   }
 }

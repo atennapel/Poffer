@@ -32,6 +32,7 @@ exports.combinators = {
     B: exprs_1.abs(['f', 'g', 'x'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x')))),
     C: exprs_1.abs(['f', 'x', 'y'], exprs_1.apps($('f'), $('y'), $('x'))),
     D: exprs_1.abs(['f', 'g', 'x', 'y'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x'), $('y')))),
+    E: exprs_1.abs(['f', 'g', 'x', 'y', 'z'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x'), $('y'), $('z')))),
     F: exprs_1.abs(['f', 'g', 'h', 'x'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x')), exprs_1.apps($('h'), $('x')))),
     G: exprs_1.abs(['f', 'g', 'h', 'x', 'y'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x'), $('y')), exprs_1.apps($('h'), $('x'), $('y')))),
     I: exprs_1.abs(['x'], $('x')),
@@ -48,7 +49,7 @@ A apply
 B compose (fmap)
 C flip
 D compose2
-E
+E compose3
 F fork (\f g h x -> f (g x) (h x)) (fmap2)
 G fork2 (\f g h x y -> f (g x y) (h x y))
 H
@@ -246,6 +247,7 @@ function matchingBracket(c) {
 }
 const START = 0;
 const NAME = 1;
+const NUMBER = 2;
 function tokenize(s) {
     let state = START;
     let t = '';
@@ -255,6 +257,8 @@ function tokenize(s) {
         if (state === START) {
             if (/[a-z\:\_]/i.test(c))
                 t += c, state = NAME;
+            else if (/[0-9]/.test(c))
+                t += c, state = NUMBER;
             else if (c === '(' || c === '{' || c === '[')
                 b.push(c), p.push(r), r = [];
             else if (c === ')' || c === '}' || c === ']') {
@@ -275,6 +279,12 @@ function tokenize(s) {
         else if (state === NAME) {
             if (!/[a-z0-9\_\!]/i.test(c))
                 r.push({ tag: 'name', val: t }), t = '', i--, state = START;
+            else
+                t += c;
+        }
+        else if (state === NUMBER) {
+            if (!/[0-9]/.test(c))
+                r.push({ tag: 'number', val: parseInt(t, 10) }), t = '', i--, state = START;
             else
                 t += c;
         }
@@ -303,6 +313,11 @@ function exprs(r, br = '[') {
 function expr(r) {
     switch (r.tag) {
         case 'name': return exprs_1.Var(r.val);
+        case 'number':
+            let c = exprs_1.Var('Zero');
+            for (let i = 0; i < r.val; i++)
+                c = exprs_1.App(exprs_1.Var('Succ'), c);
+            return c;
         case 'list': return exprs(r.val, r.br);
     }
 }
@@ -321,18 +336,34 @@ const parser_1 = require("./parser");
 const exprs_1 = require("./exprs");
 const combinators_1 = require("./combinators");
 exports._env = {
+    Y: types_1.Forall(['t'], types_1.TFun(types_1.TFun(types_1.TMeta('t'), types_1.TMeta('t')), types_1.TMeta('t'))),
     caseVoid: types_1.Forall(['t'], types_1.TFun(types_1.TVar('Void'), types_1.TMeta('t'))),
     Unit: types_1.Forall([], types_1.TVar('Unit')),
     caseUnit: types_1.Forall(['t'], types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TVar('Unit'), types_1.TMeta('t')))),
     True: types_1.Forall([], types_1.TVar('Bool')),
     False: types_1.Forall([], types_1.TVar('Bool')),
     caseBool: types_1.Forall(['t'], types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TVar('Bool'), types_1.TMeta('t'))))),
+    Zero: types_1.Forall([], types_1.TVar('Nat')),
+    Succ: types_1.Forall([], types_1.TFun(types_1.TVar('Nat'), types_1.TVar('Nat'))),
+    caseNat: types_1.Forall(['t'], types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TFun(types_1.TVar('Nat'), types_1.TMeta('t')), types_1.TFun(types_1.TVar('Nat'), types_1.TMeta('t'))))),
 };
 function _show(x) {
     if (typeof x === 'function')
         return '[Fn]';
-    if (x._tag)
-        return x._tag;
+    if (x._tag) {
+        if (x._tag === 'Zero')
+            return '0';
+        if (x._tag === 'Succ') {
+            let n = 0;
+            let c = x;
+            while (c._tag === 'Succ') {
+                n++;
+                c = c.val;
+            }
+            return `${n}`;
+        }
+        return x.val ? `(${x._tag} ${_show(x.val)})` : x._tag;
+    }
     return '' + x;
 }
 let _ctx = exports._env;

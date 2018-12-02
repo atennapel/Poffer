@@ -19,7 +19,6 @@ export const combinators: Defs = {
   S: abs(['x', 'y', 'z'], apps($('x'), $('z'), apps($('y'), $('z')))),
   T: abs(['x', 'f'], apps($('f'), $('x'))),
   W: abs(['f', 'x'], apps($('f'), $('x'), $('x'))),
-  Y: abs(['f'], apps(abs(['x'], apps($('f'), abs(['y'], apps($('x'), $('x'), $('y'))))), abs(['x'], apps($('f'), abs(['y'], apps($('x'), $('x'), $('y'))))))),
 };
 
 /* Combinators

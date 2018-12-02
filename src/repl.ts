@@ -8,6 +8,8 @@ import { showExpr } from './exprs';
 import { combinators } from './combinators';
 
 export const _env: Env = {
+  Y: Forall(['t'], TFun(TFun(TMeta('t'), TMeta('t')), TMeta('t'))),
+
   caseVoid: Forall(['t'], TFun(TVar('Void'), TMeta('t'))),
 
   Unit: Forall([], TVar('Unit')),
@@ -17,14 +19,23 @@ export const _env: Env = {
   False: Forall([], TVar('Bool')),
   caseBool: Forall(['t'], TFun(TMeta('t'), TFun(TMeta('t'), TFun(TVar('Bool'), TMeta('t'))))),
 
-  Z: Forall([], TVar('Nat')),
-  S: Forall([], TFun(TVar('Nat'), TVar('Nat'))),
+  Zero: Forall([], TVar('Nat')),
+  Succ: Forall([], TFun(TVar('Nat'), TVar('Nat'))),
   caseNat: Forall(['t'], TFun(TMeta('t'), TFun(TFun(TVar('Nat'), TMeta('t')), TFun(TVar('Nat'), TMeta('t'))))),
 };
 
 function _show(x: any): string {
   if (typeof x === 'function') return '[Fn]';
-  if (x._tag) return x.val ? `(${x._tag} ${_show(x.val)})` : x._tag;
+  if (x._tag) {
+    if (x._tag === 'Zero') return '0';
+    if (x._tag === 'Succ') {
+      let n = 0;
+      let c = x;
+      while(c._tag === 'Succ') { n++; c = c.val }
+      return `${n}`;
+    }
+    return x.val ? `(${x._tag} ${_show(x.val)})` : x._tag;
+  }
   return '' + x;
 }
 
