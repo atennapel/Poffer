@@ -1,23 +1,16 @@
 import { Env } from './Env';
 import { Forall, TVar, showForall, prettyForall, TFun, TMeta } from './types';
-import { inferGen } from './inference';
+import { inferGen, inferDefs } from './inference';
 import { isError } from 'util';
-import { compile } from './compile';
+import { compile, compileDefs } from './compile';
 import parse from './parser';
 import { showExpr } from './exprs';
+import { combinators } from './combinators';
 
 export const _env: Env = {
   Unit: Forall([], TVar('Unit')),
   True: Forall([], TVar('Bool')),
   False: Forall([], TVar('Bool')),
-  
-  I: Forall(['a'], TFun(TMeta('a'), TMeta('a'))),
-  K: Forall(['a', 'b'], TFun(TMeta('a'), TFun(TMeta('b'), TMeta('a')))),
-  S: Forall(['a', 'b', 'c'],
-    TFun(
-      TFun(TMeta('a'), TFun(TMeta('b'), TMeta('c'))),
-      TFun(TFun(TMeta('a'), TMeta('b')),
-      TFun(TMeta('a'), TMeta('c'))))),
 };
 
 function _show(x: any): string {
@@ -27,7 +20,19 @@ function _show(x: any): string {
 }
 
 let _ctx = _env;
-export default function _run(i: string, cb: (output: string, err?: boolean) => void): void {
+export function _startup(cb: (output: string, err?: boolean) => void): void {
+  const res = inferDefs(_ctx, combinators);
+  if (typeof res === 'string') return cb(`type error in combinators: ${res}`, true);
+  _ctx = res;
+  try {
+    const c = `(function() {${compileDefs(combinators)}})()`;
+    eval(c);
+    return cb('combinators loaded');
+  } catch (err) {
+    return cb(''+err, true);
+  }
+}
+export function _run(i: string, cb: (output: string, err?: boolean) => void): void {
   try {
     console.log(i);
     const p = parse(i);

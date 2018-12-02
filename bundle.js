@@ -14,7 +14,7 @@ exports.freeEnv = (env, free = {}) => {
     return fr;
 };
 
-},{"./types":8}],2:[function(require,module,exports){
+},{"./types":9}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 let id = 0;
@@ -25,6 +25,56 @@ exports.fresh = (name = '_') => `${exports.namePart(name)}$${exports.nextId()}`;
 },{}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const exprs_1 = require("./exprs");
+const $ = exprs_1.Var;
+exports.combinators = {
+    A: exprs_1.abs(['f', 'x'], exprs_1.apps($('f'), $('x'))),
+    B: exprs_1.abs(['f', 'g', 'x'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x')))),
+    C: exprs_1.abs(['f', 'x', 'y'], exprs_1.apps($('f'), $('y'), $('x'))),
+    D: exprs_1.abs(['f', 'g', 'x', 'y'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x'), $('y')))),
+    F: exprs_1.abs(['f', 'g', 'h', 'x'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x')), exprs_1.apps($('h'), $('x')))),
+    G: exprs_1.abs(['f', 'g', 'h', 'x', 'y'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x'), $('y')), exprs_1.apps($('h'), $('x'), $('y')))),
+    I: exprs_1.abs(['x'], $('x')),
+    K: exprs_1.abs(['x', 'y'], $('x')),
+    L: exprs_1.abs(['x', 'y', 'z'], exprs_1.apps($('x'), exprs_1.apps($('y'), $('z')), $('z'))),
+    P: exprs_1.abs(['f', 'g', 'x', 'y'], exprs_1.apps($('f'), exprs_1.apps($('g'), $('x')), exprs_1.apps($('g'), $('y')))),
+    R: exprs_1.abs(['x', 'y'], $('y')),
+    S: exprs_1.abs(['x', 'y', 'z'], exprs_1.apps($('x'), $('z'), exprs_1.apps($('y'), $('z')))),
+    T: exprs_1.abs(['x', 'f'], exprs_1.apps($('f'), $('x'))),
+    W: exprs_1.abs(['f', 'x'], exprs_1.apps($('f'), $('x'), $('x'))),
+};
+/* Combinators
+A apply
+B compose (fmap)
+C flip
+D compose2
+E
+F fork (\f g h x -> f (g x) (h x)) (fmap2)
+G fork2 (\f g h x y -> f (g x y) (h x y))
+H
+I id
+J
+K const
+L left-map-fork (\f g x -> f (g x) x) (bind, >>=)
+M
+N
+O
+P psi (\f g x -> f (g x) (g y))
+Q
+R right (\x y -> y)
+S share-env (subst) (app, <*>)
+T revapp
+U
+V
+W double (\f x -> f x x)
+X
+Y fix (trampolined?)
+Z memoized fix (trampolined?)
+*/
+
+},{"./exprs":5}],4:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.compile = (expr) => {
     switch (expr.tag) {
         case 'Var': return expr.name;
@@ -33,14 +83,23 @@ exports.compile = (expr) => {
         case 'Let': return `(${expr.name} => ${exports.compile(expr.body)})(${exports.compile(expr.val)})`;
     }
 };
+exports.compileDefs = (defs) => {
+    const r = [];
+    for (let k in defs) {
+        r.push(`window['${k}'] = ${exports.compile(defs[k])}`);
+    }
+    return r.join(';') + ';';
+};
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Var = (name) => ({ tag: 'Var', name });
 exports.Abs = (arg, body) => ({ tag: 'Abs', arg, body });
+exports.abs = (as, body) => as.reduceRight((x, y) => exports.Abs(y, x), body);
 exports.App = (left, right) => ({ tag: 'App', left, right });
 exports.appFrom = (es) => es.reduce(exports.App);
+exports.apps = (...es) => exports.appFrom(es);
 exports.Let = (name, val, body) => ({ tag: 'Let', name, val, body });
 exports.showExpr = (expr) => {
     switch (expr.tag) {
@@ -51,11 +110,12 @@ exports.showExpr = (expr) => {
     }
 };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
 const Env_1 = require("./Env");
+const utils_1 = require("./utils");
 exports.isError = (val) => typeof val === 'string';
 // unification
 const prune = (ty) => {
@@ -153,8 +213,18 @@ exports.inferGen = (env, expr) => {
         return ret;
     return generalize({}, ret);
 };
+exports.inferDefs = (env_, ds) => {
+    let env = utils_1.objClone(env_);
+    for (let k in ds) {
+        const res = exports.inferGen(env, ds[k]);
+        if (typeof res === 'string')
+            return res;
+        env[k] = res;
+    }
+    return env;
+};
 
-},{"./Env":1,"./types":8}],6:[function(require,module,exports){
+},{"./Env":1,"./types":9,"./utils":10}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const exprs_1 = require("./exprs");
@@ -241,7 +311,7 @@ function parse(s) {
 }
 exports.default = parse;
 
-},{"./exprs":4,"./utils":9}],7:[function(require,module,exports){
+},{"./exprs":5,"./utils":10}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
@@ -249,13 +319,11 @@ const inference_1 = require("./inference");
 const compile_1 = require("./compile");
 const parser_1 = require("./parser");
 const exprs_1 = require("./exprs");
+const combinators_1 = require("./combinators");
 exports._env = {
     Unit: types_1.Forall([], types_1.TVar('Unit')),
     True: types_1.Forall([], types_1.TVar('Bool')),
     False: types_1.Forall([], types_1.TVar('Bool')),
-    I: types_1.Forall(['a'], types_1.TFun(types_1.TMeta('a'), types_1.TMeta('a'))),
-    K: types_1.Forall(['a', 'b'], types_1.TFun(types_1.TMeta('a'), types_1.TFun(types_1.TMeta('b'), types_1.TMeta('a')))),
-    S: types_1.Forall(['a', 'b', 'c'], types_1.TFun(types_1.TFun(types_1.TMeta('a'), types_1.TFun(types_1.TMeta('b'), types_1.TMeta('c'))), types_1.TFun(types_1.TFun(types_1.TMeta('a'), types_1.TMeta('b')), types_1.TFun(types_1.TMeta('a'), types_1.TMeta('c'))))),
 };
 function _show(x) {
     if (typeof x === 'function')
@@ -265,6 +333,21 @@ function _show(x) {
     return '' + x;
 }
 let _ctx = exports._env;
+function _startup(cb) {
+    const res = inference_1.inferDefs(_ctx, combinators_1.combinators);
+    if (typeof res === 'string')
+        return cb(`type error in combinators: ${res}`, true);
+    _ctx = res;
+    try {
+        const c = `(function() {${compile_1.compileDefs(combinators_1.combinators)}})()`;
+        eval(c);
+        return cb('combinators loaded');
+    }
+    catch (err) {
+        return cb('' + err, true);
+    }
+}
+exports._startup = _startup;
 function _run(i, cb) {
     try {
         console.log(i);
@@ -287,9 +370,9 @@ function _run(i, cb) {
         cb('' + e, true);
     }
 }
-exports.default = _run;
+exports._run = _run;
 
-},{"./compile":3,"./exprs":4,"./inference":5,"./parser":6,"./types":8}],8:[function(require,module,exports){
+},{"./combinators":3,"./compile":4,"./exprs":5,"./inference":6,"./parser":7,"./types":9}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const Name_1 = require("./Name");
@@ -376,7 +459,7 @@ exports.prettyForall = (ty) => {
     return `forall ${sargs.join(' ')}. ${exports.prettyTy(exports.substMeta(ty.type, map))}`;
 };
 
-},{"./Name":2}],9:[function(require,module,exports){
+},{"./Name":2}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.impossible = () => { throw new Error('impossible'); };
@@ -443,12 +526,12 @@ exports.objClone = (map) => {
     return n;
 };
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const repl_1 = require("./repl");
 function getOutput(s, cb) {
-    repl_1.default(s, cb);
+    repl_1._run(s, cb);
 }
 var hist = [], index = -1;
 var input = document.getElementById('input');
@@ -458,37 +541,43 @@ function onresize() {
 }
 window.addEventListener('resize', onresize);
 onresize();
-addResult("REPL");
-input.focus();
-input.onkeydown = function (keyEvent) {
-    var val = input.value;
-    var txt = (val || '').trim();
-    if (keyEvent.keyCode === 13) {
-        keyEvent.preventDefault();
-        if (txt) {
-            hist.push(val);
-            index = hist.length;
-            input.value = '';
-            var div = document.createElement('div');
-            div.innerHTML = val;
-            div.className = 'line input';
-            content.insertBefore(div, input);
-            getOutput(txt, addResult);
-        }
+repl_1._startup(function (output, err) {
+    if (err)
+        addResult(output, true);
+    else {
+        addResult("REPL");
+        input.focus();
+        input.onkeydown = function (keyEvent) {
+            var val = input.value;
+            var txt = (val || '').trim();
+            if (keyEvent.keyCode === 13) {
+                keyEvent.preventDefault();
+                if (txt) {
+                    hist.push(val);
+                    index = hist.length;
+                    input.value = '';
+                    var div = document.createElement('div');
+                    div.innerHTML = val;
+                    div.className = 'line input';
+                    content.insertBefore(div, input);
+                    getOutput(txt, addResult);
+                }
+            }
+            else if (keyEvent.keyCode === 38 && index > 0) {
+                keyEvent.preventDefault();
+                input.value = hist[--index];
+            }
+            else if (keyEvent.keyCode === 40 && index < hist.length - 1) {
+                keyEvent.preventDefault();
+                input.value = hist[++index];
+            }
+            else if (keyEvent.keyCode === 40 && keyEvent.ctrlKey && index >= hist.length - 1) {
+                index = hist.length;
+                input.value = '';
+            }
+        };
     }
-    else if (keyEvent.keyCode === 38 && index > 0) {
-        keyEvent.preventDefault();
-        input.value = hist[--index];
-    }
-    else if (keyEvent.keyCode === 40 && index < hist.length - 1) {
-        keyEvent.preventDefault();
-        input.value = hist[++index];
-    }
-    else if (keyEvent.keyCode === 40 && keyEvent.ctrlKey && index >= hist.length - 1) {
-        index = hist.length;
-        input.value = '';
-    }
-};
+});
 function addResult(msg, err) {
     var divout = document.createElement('pre');
     divout.className = 'line output';
@@ -501,4 +590,4 @@ function addResult(msg, err) {
     return divout;
 }
 
-},{"./repl":7}]},{},[10]);
+},{"./repl":8}]},{},[11]);

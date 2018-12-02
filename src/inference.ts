@@ -2,6 +2,8 @@ import { Type, TMeta, showTy, Forall, FreeMeta, freeForall, Subst, freshMeta, su
 import { Name } from './Name';
 import { Expr } from './exprs';
 import { Env, freeEnv, extend } from './Env';
+import { Defs } from './defs';
+import { objClone } from './utils';
 
 export const isError = <T>(val: string | T): val is string => typeof val === 'string';
 
@@ -88,4 +90,14 @@ export const inferGen = (env: Env, expr: Expr): string | Forall => {
   const ret = infer(env, expr);
   if (isError(ret)) return ret;
   return generalize({}, ret);
+};
+
+export const inferDefs = (env_: Env, ds: Defs): string | Env => {
+  let env = objClone(env_);
+  for (let k in ds) {
+    const res = inferGen(env, ds[k]);
+    if (typeof res === 'string') return res;
+    env[k] = res;
+  }
+  return env;
 };
