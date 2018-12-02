@@ -321,9 +321,12 @@ const parser_1 = require("./parser");
 const exprs_1 = require("./exprs");
 const combinators_1 = require("./combinators");
 exports._env = {
+    caseVoid: types_1.Forall(['t'], types_1.TFun(types_1.TVar('Void'), types_1.TMeta('t'))),
     Unit: types_1.Forall([], types_1.TVar('Unit')),
+    caseUnit: types_1.Forall(['t'], types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TVar('Unit'), types_1.TMeta('t')))),
     True: types_1.Forall([], types_1.TVar('Bool')),
     False: types_1.Forall([], types_1.TVar('Bool')),
+    caseBool: types_1.Forall(['t'], types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TMeta('t'), types_1.TFun(types_1.TVar('Bool'), types_1.TMeta('t'))))),
 };
 function _show(x) {
     if (typeof x === 'function')

@@ -8,9 +8,14 @@ import { showExpr } from './exprs';
 import { combinators } from './combinators';
 
 export const _env: Env = {
+  caseVoid: Forall(['t'], TFun(TVar('Void'), TMeta('t'))),
+
   Unit: Forall([], TVar('Unit')),
+  caseUnit: Forall(['t'], TFun(TMeta('t'), TFun(TVar('Unit'), TMeta('t')))),
+
   True: Forall([], TVar('Bool')),
   False: Forall([], TVar('Bool')),
+  caseBool: Forall(['t'], TFun(TMeta('t'), TFun(TMeta('t'), TFun(TVar('Bool'), TMeta('t'))))),
 };
 
 function _show(x: any): string {
