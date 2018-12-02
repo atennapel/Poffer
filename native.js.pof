@@ -1,7 +1,0 @@
-
-%native add function(x) {return function(y) {return x + y}}
-%native sub function(x) {return function(y) {return x - y}}
-%native mul function(x) {return function(y) {return x * y}}
-%native div function(x) {return function(y) {return x / y}}
-%native rem function(x) {return function(y) {return x % y}}
-
