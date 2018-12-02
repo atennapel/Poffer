@@ -8,6 +8,7 @@ export const combinators: Defs = {
   B: abs(['f', 'g', 'x'], apps($('f'), apps($('g'), $('x')))),
   C: abs(['f', 'x', 'y'], apps($('f'), $('y'), $('x'))),
   D: abs(['f', 'g', 'x', 'y'], apps($('f'), apps($('g'), $('x'), $('y')))),
+  E: abs(['f', 'g', 'x', 'y', 'z'], apps($('f'), apps($('g'), $('x'), $('y'), $('z')))),
   F: abs(['f', 'g', 'h', 'x'], apps($('f'), apps($('g'), $('x')), apps($('h'), $('x')))),
   G: abs(['f', 'g', 'h', 'x', 'y'], apps($('f'), apps($('g'), $('x'), $('y')), apps($('h'), $('x'), $('y')))),
   I: abs(['x'], $('x')),
@@ -18,6 +19,7 @@ export const combinators: Defs = {
   S: abs(['x', 'y', 'z'], apps($('x'), $('z'), apps($('y'), $('z')))),
   T: abs(['x', 'f'], apps($('f'), $('x'))),
   W: abs(['f', 'x'], apps($('f'), $('x'), $('x'))),
+  Y: abs(['f'], apps(abs(['x'], apps($('f'), abs(['y'], apps($('x'), $('x'), $('y'))))), abs(['x'], apps($('f'), abs(['y'], apps($('x'), $('x'), $('y'))))))),
 };
 
 /* Combinators
@@ -25,7 +27,7 @@ A apply
 B compose (fmap)
 C flip
 D compose2
-E
+E compose3
 F fork (\f g h x -> f (g x) (h x)) (fmap2)
 G fork2 (\f g h x y -> f (g x y) (h x y))
 H

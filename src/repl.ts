@@ -16,11 +16,15 @@ export const _env: Env = {
   True: Forall([], TVar('Bool')),
   False: Forall([], TVar('Bool')),
   caseBool: Forall(['t'], TFun(TMeta('t'), TFun(TMeta('t'), TFun(TVar('Bool'), TMeta('t'))))),
+
+  Z: Forall([], TVar('Nat')),
+  S: Forall([], TFun(TVar('Nat'), TVar('Nat'))),
+  caseNat: Forall(['t'], TFun(TMeta('t'), TFun(TFun(TVar('Nat'), TMeta('t')), TFun(TVar('Nat'), TMeta('t'))))),
 };
 
 function _show(x: any): string {
   if (typeof x === 'function') return '[Fn]';
-  if (x._tag) return x._tag;
+  if (x._tag) return x.val ? `(${x._tag} ${_show(x.val)})` : x._tag;
   return '' + x;
 }
 
