@@ -253,6 +253,9 @@ exports._env = {
     Unit: types_1.Forall([], types_1.TVar('Unit')),
     True: types_1.Forall([], types_1.TVar('Bool')),
     False: types_1.Forall([], types_1.TVar('Bool')),
+    I: types_1.Forall(['a'], types_1.TFun(types_1.TMeta('a'), types_1.TMeta('a'))),
+    K: types_1.Forall(['a', 'b'], types_1.TFun(types_1.TMeta('a'), types_1.TFun(types_1.TMeta('b'), types_1.TMeta('a')))),
+    S: types_1.Forall(['a', 'b', 'c'], types_1.TFun(types_1.TFun(types_1.TMeta('a'), types_1.TFun(types_1.TMeta('b'), types_1.TMeta('c'))), types_1.TFun(types_1.TFun(types_1.TMeta('a'), types_1.TMeta('b')), types_1.TFun(types_1.TMeta('a'), types_1.TMeta('c'))))),
 };
 function _show(x) {
     if (typeof x === 'function')
