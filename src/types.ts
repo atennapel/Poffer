@@ -76,7 +76,8 @@ export const simplifyNames = (ns: Name[]): Name[] => {
   const map: { [key: string]: number } = {};
   const ret: Name[] = [];
   for (let i = 0; i < ns.length; i++) {
-    const n = namePart(ns[i]);
+    let n = namePart(ns[i]);
+    if (n === '_') n = 't';
     if (!map[n]) {
       map[n] = 1;
       ret.push(n);

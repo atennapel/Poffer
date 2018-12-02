@@ -25,9 +25,9 @@ export default function _run(i: string, cb: (output: string, err?: boolean) => v
     const p = parse(i);
     console.log(showExpr(p));
     const result = inferGen(_ctx, p);
-    if (isError(result)) throw result;
+    if (typeof result === 'string') throw result;
     else {
-      const ty = result as Forall;
+      const ty = result;
       console.log(showForall(ty));
       const c = compile(p);
       console.log(c);
