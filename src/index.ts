@@ -5,3 +5,7 @@
 - function as hkt
 - typeclass constraints
 */
+
+/*
+addition Y (B (caseNat I) (D Succ))
+*/
