@@ -16,6 +16,7 @@ export interface App {
 }
 export const App = (left: Expr, right: Expr): App => ({ tag: 'App', left, right });
 export const isApp = (expr: Expr): expr is App => expr.tag === 'App';
+export const app = (...expr: Expr[]): Expr => expr.reduce(App);
 
 export const showExpr = (expr: Expr): string => {
   if (isVar(expr)) return expr.name;

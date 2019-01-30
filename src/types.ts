@@ -43,12 +43,16 @@ export interface TApp {
 }
 export const TApp = (left: Type, right: Type): TApp => ({ tag: 'TApp', left, right });
 export const isTApp = (type: Type): type is TApp => type.tag === 'TApp';
+export const tapp = (...ts: Type[]): Type => ts.reduce(TApp);
 
 export const showType = (type: Type): string => {
   if (isTCon(type)) return type.name;
   if (isTVar(type)) return `'${type.id}`;
   if (isTMeta(type)) return `?${type.id}`;
-  if (isTApp(type)) return `(${showType(type.left)} ${showType(type.right)})`;
+  if (isTApp(type))
+    return isTApp(type.left) && isTCon(type.left.left) && /[^a-z]/i.test(type.left.left.name) ?
+      `(${showType(type.left.right)} ${type.left.left.name} ${showType(type.right)})` :
+      `(${showType(type.left)} ${showType(type.right)})`;
   return impossible('showType');
 };
 
