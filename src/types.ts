@@ -44,6 +44,17 @@ export interface TApp {
 export const TApp = (left: Type, right: Type): TApp => ({ tag: 'TApp', left, right });
 export const isTApp = (type: Type): type is TApp => type.tag === 'TApp';
 export const tapp = (...ts: Type[]): Type => ts.reduce(TApp);
+export const tapps = (head: Type, args: Type[]) =>
+  [head].concat(args).reduce(TApp);
+export const flattenTApp = (ty: TApp): [Type, Type[]] => {
+  let c: Type = ty;
+  const args: Type[] = [];
+  while (isTApp(c)) {
+    args.push(c.right);
+    c = c.left;
+  }
+  return [c, args.reverse()];
+};
 
 export const showType = (type: Type): string => {
   if (isTCon(type)) return type.name;
@@ -72,3 +83,15 @@ export const containsTMeta = (type: Type, m: TMeta): boolean => {
   if (isTApp(type)) return containsTMeta(type.left, m) || containsTMeta(type.right, m);
   return false;
 };
+
+export interface Qual {
+  readonly tag: 'Qual';
+  readonly constraints: Type[];
+  readonly type: Type;
+}
+export const Qual = (constraints: Type[], type: Type): Qual =>
+  ({ tag: 'Qual', constraints, type });
+
+export const showQual = (qual: Qual): string =>
+  qual.constraints.length === 0 ? showType(qual.type) :
+  `${qual.constraints.map(showType).join(', ')} => ${showType(qual.type)}`;

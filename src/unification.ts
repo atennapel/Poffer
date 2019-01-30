@@ -34,6 +34,9 @@ const synthKind = (type: Type): Kind => {
   return type.kind;
 };
 
+export const checkKind = (ty: Type, kind: Kind): void =>
+  unifyKind(kind, synthKind(ty));
+
 const bindType = (a: TMeta, b: Type): void => {
   if (isTMeta(b) && b.id === a.id) return;
   if (containsTMeta(b, a)) return tyerr(`infinite type: ${showType(a)} in ${showType(b)}`);
