@@ -1,28 +1,29 @@
-import { showType, TCon, tapp, Type, showQual, Qual, freshTMeta } from "./types";
-import { tfun, tv, initialEnv, kType, Env } from "./env";
-import { Var, app, showExpr } from "./exprs";
+import { showQual } from "./types";
+import { initialEnv, Env } from "./env";
+import { showExpr } from "./exprs";
 import { infer } from "./inference";
-import { KFun } from "./kinds";
+import { parse } from "./parser";
+import { compile } from "./compiler";
 
-const $ = Var;
-const tnat = TCon('Nat', kType);
-const tList = TCon('List', KFun(kType, kType));
-const tlist = (t: Type) => tapp(tList, t);
+const lib = require('fs').readFileSync('lib.js', 'utf8');
 
-const env: Env = Object.assign({}, initialEnv, {
-  singleton: Qual([], tfun(tv(0), tlist(tv(0)))),
-  Z: Qual([], tnat),
-  S: Qual([], tfun(tnat, tnat)),
-} as Env);
-const expr = app($('K'), $('Z'), $('Z'));
-console.log(showExpr(expr));
-const microtime = require('microtime');
+const env: Env = initialEnv
+
+const script = `i(i(i0))`;
+
 try {
+  const expr = parse(script);
+  console.log(showExpr(expr));
+  const microtime = require('microtime');
   let time = microtime.now();
   const type = infer(env, expr);
   time = microtime.now() - time;
   console.log(showQual(type));
   console.log(`${time}us`);
+  const c = compile(expr);
+  console.log(c);
+  const e = eval(`(()=>{${lib};return(${c})})()`);
+  console.log(e);
 } catch(err) {
   console.log('' + err);
 }

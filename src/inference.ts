@@ -1,9 +1,10 @@
-import { Env, kType, tfun, kConstraint } from "./env";
-import { Type, TMeta, isTVar, isTApp, isTMeta, TApp, freshTMeta, TVar, pruneType, Qual, showType } from "./types";
-import { Expr, isVar, isApp } from "./exprs";
+import { Env, kType, tfun, kConstraint, tnat } from "./env";
+import { Type, TMeta, isTVar, isTApp, isTMeta, TApp, freshTMeta, TVar, pruneType, Qual, showType, freeTMeta, resetTypeId } from "./types";
+import { Expr, isVar, isApp, isNatLit } from "./exprs";
 import { tyerr, impossible } from "./util";
 import { unifyType, unifyKind, checkKind } from "./unification";
 import { solve } from "./solver";
+import { resetKindId } from "./kinds";
 
 const inst = (type: Type, map: Map<number, TMeta>): Type => {
   if (isTVar(type)) {
@@ -52,10 +53,14 @@ const synth = (env: Env, expr: Expr): [Type[], Type] => {
     unifyType(ta, tfun(tb, tr));
     return [combine(cs1, cs2), pruneType(tr)];
   }
+  if (isNatLit(expr)) return [[], tnat];
   return impossible('synth');
 };
 
 export const infer = (env: Env, expr: Expr): Qual => {
+  resetKindId();
+  resetTypeId();
   const [cs, ty] = synth(env, expr);
-  return genQual(solve(cs), pruneType(ty));
+  const free = freeTMeta(ty);
+  return genQual(solve(free, cs), ty);
 };

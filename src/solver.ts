@@ -1,41 +1,55 @@
-import { Type, showType, pruneType, isTApp, flattenTApp, isTCon, isTMeta, tapp, tapps } from "./types";
+import { Type, showType, pruneType, isTApp, flattenTApp, isTCon, isTMeta, tapp, tapps, isTVar, Free } from "./types";
 import { tyerr } from "./util";
+import { cDup, cDrop, isTFun } from "./env";
 
-const solvers: { [key: string]: (args: Type[]) => Type[] | null } = {
-  Dup: args => {
-    if (args.length !== 1)
-      return tyerr(`Dup expects exactly 1 argument but got ${args.length}: ${args.map(showType).join(', ')}`);
-    const type = args[0];
-    if (isTMeta(type)) return [type];
-    if (isTCon(type) && type.name === 'Nat') return null;
+const handleDup = (free: Free, type: Type): Type[] => {
+  if (isTMeta(type)) return free.has(type) ? [tapp(cDup, type)] : [];
+  if (isTCon(type)) {
+    if (type.name === 'Nat') return [];
+    if (type.name === 'List') return [];
+    if (type.name === 'Unit') return [];
     return tyerr(`${showType(type)} cannot be duplicated`);
-  },
-  Drop: args => {
-    if (args.length !== 1)
-      return tyerr(`Drop expects exactly 1 argument but got ${args.length}: ${args.map(showType).join(', ')}`);
-    const type = args[0];
-    if (isTMeta(type)) return [type];
-    if (isTCon(type) && type.name === 'Nat') return null;
+  }
+  if (isTFun(type)) return handleDup(free, type.right);
+  if (isTApp(type))
+    return handleDup(free, type.left).concat(handleDup(free, type.right));
+  return tyerr(`${showType(type)} cannot be duplicated`);
+};
+const handleDrop = (free: Free, type: Type): Type[] => {
+  if (isTMeta(type)) return free.has(type) ? [tapp(cDrop, type)] : [];
+  if (isTCon(type)) {
+    if (type.name === 'Nat') return [];
+    if (type.name === 'List') return [];
+    if (type.name === 'Unit') return [];
     return tyerr(`${showType(type)} cannot be dropped`);
-  },
+  }
+  if (isTFun(type)) return handleDup(free, type.right);
+  if (isTApp(type))
+    return handleDup(free, type.left).concat(handleDup(free, type.right));
+  return tyerr(`${showType(type)} cannot be dropped`);
 };
 
-const solveOne = (cs: Type): Type | null => {
+type Solvers = { [key: string]: (free: Free, args: Type[]) => Type[] };
+const solvers: Solvers = {
+  Dup: (free, args) => handleDup(free, args[0]),
+  Drop: (free, args) => handleDrop(free, args[0]),
+};
+
+const solveOne = (free: Free, cs: Type): Type[] => {
   if (!isTApp(cs)) return tyerr(`invalid constraint: ${showType(cs)}`);
   const f = flattenTApp(cs);
   if (!isTCon(f[0])) return tyerr(`invalid constraint head: ${showType(f[0])}`);
   const cname = f[0].name;
   if (!solvers[cname]) return tyerr(`undefined constraint: ${cname}`);
-  const res = solvers[cname](f[1]);
-  if (!res) return null;
-  return tapps(f[0], res);
+  return solvers[cname](free, f[1]);
 };
 
-export const solve = (cs: Type[]): Type[] => {
+export const solve = (free: Free, cs: Type[]): Type[] => {
   const remaining: Type[] = [];
   for (let i = 0, l = cs.length; i < l; i++) {
-    const ret = solveOne(pruneType(cs[i]));
-    if (ret) remaining.push(ret);
+    const ret = solveOne(free, pruneType(cs[i]));
+    for (let j = 0, k = ret.length; j < k; j++)
+      remaining.push(ret[j]);
   }
   return remaining.map(pruneType);
 };

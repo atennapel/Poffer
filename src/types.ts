@@ -84,6 +84,13 @@ export const containsTMeta = (type: Type, m: TMeta): boolean => {
   return false;
 };
 
+export type Free = Set<TMeta>;
+export const freeTMeta = (type: Type, s: Free = new Set()): Free => {
+  if (isTMeta(type)) { s.add(type); return s }
+  if (isTApp(type)) { freeTMeta(type.right, freeTMeta(type.left, s)); return s }
+  return s;
+};
+
 export interface Qual {
   readonly tag: 'Qual';
   readonly constraints: Type[];
