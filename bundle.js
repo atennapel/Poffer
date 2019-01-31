@@ -1,4 +1,4 @@
-(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const exprs_1 = require("./exprs");
@@ -11,7 +11,7 @@ exports.compile = (expr) => {
     if (exprs_1.isNatLit(expr))
         return `${expr.val}n`;
     if (exprs_1.isThunk(expr))
-        return `(_ => ${exports.compile(expr.expr)})`;
+        return `_thunk(() => ${exports.compile(expr.expr)})`;
     return util_1.impossible('compile');
 };
 
@@ -27,6 +27,9 @@ exports.tfun = (...ts) => ts.reduceRight((x, y) => types_1.TApp(types_1.TApp(exp
 exports.isTFun = (type) => types_1.isTApp(type) && types_1.isTApp(type.left) && type.left.left === exports.tFun;
 exports.tnat = types_1.TCon('Nat', exports.kType);
 exports.tunit = types_1.TCon('Unit', exports.kType);
+exports.tthunk = types_1.TCon('Thunk', kinds_1.KFun(exports.kType, exports.kType));
+exports.tpair = types_1.TCon('*', kinds_1.KFun(exports.kType, kinds_1.KFun(exports.kType, exports.kType)));
+exports.tsum = types_1.TCon('+', kinds_1.KFun(exports.kType, kinds_1.KFun(exports.kType, exports.kType)));
 exports.cDup = types_1.TCon('Dup', kinds_1.KFun(exports.kType, exports.kConstraint));
 exports.cDrop = types_1.TCon('Drop', kinds_1.KFun(exports.kType, exports.kConstraint));
 exports.tv = (id, kind = exports.kType) => types_1.TVar(id, kind);
@@ -38,8 +41,17 @@ exports.initialEnv = {
     W: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(1))),
     Y: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0)), exports.tv(0))),
     u: types_1.Qual([], exports.tunit),
-    i: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
-    j: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
+    f: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tv(0))),
+    s: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
+    n: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
+    i: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
+    r: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
+    P: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(1), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)))),
+    F: types_1.Qual([], exports.tfun(types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(0))),
+    S: types_1.Qual([], exports.tfun(types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(1))),
+    L: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
+    R: types_1.Qual([], exports.tfun(exports.tv(1), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
+    M: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(2)), exports.tfun(exports.tv(1), exports.tv(2)), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)), exports.tv(2))),
 };
 
 },{"./kinds":5,"./types":9}],3:[function(require,module,exports){
@@ -127,7 +139,7 @@ const synth = (env, expr) => {
         return [[], env_1.tnat];
     if (exprs_1.isThunk(expr)) {
         const [cs, ty] = synth(env, expr.expr);
-        return [cs, env_1.tfun(types_1.freshTMeta(env_1.kType), ty)];
+        return [cs, types_1.tapp(env_1.tthunk, ty)];
     }
     return util_1.impossible('synth');
 };
@@ -305,10 +317,16 @@ function _show(x) {
         return JSON.stringify(x);
     if (typeof x === 'function')
         return '[Function]';
-    if (typeof x._tag === 'string')
+    if (typeof x._tag === 'string') {
+        if (x._tag === 'Thunk') {
+            if (x.forced)
+                return `Thunk(${_show(x.val)})`;
+            return `Thunk(...)`;
+        }
         return typeof x.val === 'undefined' ? x._tag :
             Array.isArray(x.val) ? `(${x._tag} ${x.val.map(_show).join(' ')})` :
                 `(${x._tag} ${_show(x.val)})`;
+    }
     if (typeof x === 'object' && x._rec) {
         const r = [];
         for (let k in x)
@@ -316,6 +334,8 @@ function _show(x) {
                 r.push(`${k}: ${_show(x[k])}`);
         return `{${r.join(', ')}}`;
     }
+    if (Array.isArray(x))
+        return `[${x.map(_show).join(' ')}]`;
     return '' + x;
 }
 function _run(_i, cb) {
@@ -349,11 +369,11 @@ const handleDup = (free, type) => {
     if (types_1.isTMeta(type))
         return free.has(type) ? [types_1.tapp(env_1.cDup, type)] : [];
     if (types_1.isTCon(type)) {
-        if (type.name === 'Nat')
+        if (type === env_1.tnat)
             return [];
-        if (type.name === 'List')
+        if (type === env_1.tunit)
             return [];
-        if (type.name === 'Unit')
+        if (type === env_1.tthunk)
             return [];
         return util_1.tyerr(`${types_1.showType(type)} cannot be duplicated`);
     }
@@ -367,11 +387,11 @@ const handleDrop = (free, type) => {
     if (types_1.isTMeta(type))
         return free.has(type) ? [types_1.tapp(env_1.cDrop, type)] : [];
     if (types_1.isTCon(type)) {
-        if (type.name === 'Nat')
+        if (type === env_1.tnat)
             return [];
-        if (type.name === 'List')
+        if (type === env_1.tunit)
             return [];
-        if (type.name === 'Unit')
+        if (type === env_1.tthunk)
             return [];
         return util_1.tyerr(`${types_1.showType(type)} cannot be dropped`);
     }

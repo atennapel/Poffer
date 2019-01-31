@@ -1,13 +1,13 @@
 import { Type, showType, pruneType, isTApp, flattenTApp, isTCon, isTMeta, tapp, tapps, isTVar, Free } from "./types";
 import { tyerr } from "./util";
-import { cDup, cDrop, isTFun } from "./env";
+import { cDup, cDrop, isTFun, tunit, tnat, tthunk } from "./env";
 
 const handleDup = (free: Free, type: Type): Type[] => {
   if (isTMeta(type)) return free.has(type) ? [tapp(cDup, type)] : [];
   if (isTCon(type)) {
-    if (type.name === 'Nat') return [];
-    if (type.name === 'List') return [];
-    if (type.name === 'Unit') return [];
+    if (type === tnat) return [];
+    if (type === tunit) return [];
+    if (type === tthunk) return [];
     return tyerr(`${showType(type)} cannot be duplicated`);
   }
   if (isTFun(type)) return handleDup(free, type.right);
@@ -18,9 +18,9 @@ const handleDup = (free: Free, type: Type): Type[] => {
 const handleDrop = (free: Free, type: Type): Type[] => {
   if (isTMeta(type)) return free.has(type) ? [tapp(cDrop, type)] : [];
   if (isTCon(type)) {
-    if (type.name === 'Nat') return [];
-    if (type.name === 'List') return [];
-    if (type.name === 'Unit') return [];
+    if (type === tnat) return [];
+    if (type === tunit) return [];
+    if (type === tthunk) return [];
     return tyerr(`${showType(type)} cannot be dropped`);
   }
   if (isTFun(type)) return handleDup(free, type.right);

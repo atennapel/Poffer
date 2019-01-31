@@ -7,5 +7,41 @@ const K = x => y => x;
 const W = f => x => f(x)(x);
 
 const u = true;
-const i = x => x + 1n;
-const j = x => x - 1n;
+
+const _thunk = thunk => ({ _tag: 'Thunk', thunk, forced: false, val: null });
+const f = t => {
+  if (!t.forced) {
+    t.forced = true;
+    t.val = t.thunk();
+  }
+  return t.val;
+};
+
+const s = x => x + 1n;
+const n = z => s => n => n === 0n ? f(z) : s(n - 1n);
+const i = z => s => n => {
+  let c = 0n;
+  let x = f(z);
+  while (c < n) {
+    x = s(x);
+    c++;
+  }
+  return x;
+};
+const r = z => s => n => {
+  let c = 0n;
+  let x = f(z);
+  while (c < n) {
+    x = s(c)(x);
+    c++;
+  }
+  return x;
+};
+
+const P = x => y => [x, y];
+const F = p => p[0];
+const S = p => p[1];
+
+const L = x => ({ _tag: 'L', val: x });
+const R = x => ({ _tag: 'R', val: x });
+const M = l => r => x => x._tag === 'L' ? l(x.val) : r(x.val);
