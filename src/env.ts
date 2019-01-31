@@ -34,11 +34,16 @@ export type Env = { [key: string]: Qual };
 export const tv = (id: number, kind: Kind = kType) => TVar(id, kind);
 export const initialEnv: Env = {
   I: Qual([], tfun(tv(0), tv(0))),
+  A: Qual([], tfun(tfun(tv(0), tv(1)), tv(0), tv(1))),
   B: Qual([], tfun(tfun(tv(1), tv(2)), tfun(tv(0), tv(1)), tv(0), tv(2))),
   C: Qual([], tfun(tfun(tv(0), tv(1), tv(2)), tv(1), tv(0), tv(2))),
+  D: Qual([], tfun(tfun(tv(2), tv(3)), tfun(tv(0), tv(1), tv(2)), tv(0), tv(1), tv(3))),
   F: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(1), tv(2), tv(3)), tfun(tv(0), tv(1)), tfun(tv(0), tv(2)), tv(0), tv(3))),
+  G: Qual([tapp(cDup, tv(0)), tapp(cDup, tv(1))], tfun(tfun(tv(2), tv(3), tv(4)), tfun(tv(0), tv(1), tv(2)), tfun(tv(0), tv(1), tv(3)), tv(0), tv(1), tv(4))),
   K: Qual([tapp(cDrop, tv(1))], tfun(tv(0), tv(1), tv(0))),
+  R: Qual([tapp(cDrop, tv(0))], tfun(tv(0), tv(1), tv(1))),
   S: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(0), tv(1), tv(2)), tfun(tv(0), tv(1)), tv(0), tv(2))),
+  T: Qual([], tfun(tv(0), tfun(tv(0), tv(1)), tv(1))),
   W: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(0), tv(0), tv(1)), tv(0), tv(1))),
   Y: Qual([], tfun(tfun(tv(0), tv(0)), tv(0))),
 
@@ -47,17 +52,17 @@ export const initialEnv: Env = {
   f: Qual([], tfun(tapp(tthunk, tv(0)), tv(0))),
   z: Qual([], tfun(tfun(tv(0), tv(1)), tapp(tthunk, tv(0)), tapp(tthunk, tv(1)))),
 
-  P: Qual([], tfun(tv(0), tv(1), tapp(tpair, tv(0), tv(1)))),
-  L: Qual([], tfun(tv(0), tapp(tsum, tv(0), tv(1)))),
-  R: Qual([], tfun(tv(1), tapp(tsum, tv(0), tv(1)))),
+  p: Qual([], tfun(tv(0), tv(1), tapp(tpair, tv(0), tv(1)))),
+  l: Qual([], tfun(tv(0), tapp(tsum, tv(0), tv(1)))),
+  r: Qual([], tfun(tv(1), tapp(tsum, tv(0), tv(1)))),
 
-  N: Qual([], tfun(tapp(ttype, tv(0)), tapp(tmutarray, tv(0)))),
-  A: Qual([], tfun(tv(0), tapp(tmutarray, tv(0)), tunit)),
-  O: Qual([], tfun(tapp(tmutarray, tv(0)), tapp(tsum, tunit, tv(0)))),
+  n: Qual([], tfun(tapp(ttype, tv(0)), tapp(tmutarray, tv(0)))),
+  a: Qual([], tfun(tv(0), tapp(tmutarray, tv(0)), tapp(tmutarray, tv(0)))),
+  o: Qual([], tfun(tapp(tmutarray, tv(0)), tapp(tpair, tapp(tmutarray, tv(0)), tapp(tsum, tunit, tv(0))))),
 
-  r: Qual([], tfun(tv(0), tapp(tref, tv(0)))),
-  g: Qual([], tfun(tapp(tref, tv(0)), tv(0))),
-  s: Qual([], tfun(tv(0), tapp(tref, tv(0)), tunit)),
+  v: Qual([], tfun(tv(0), tapp(tref, tv(0)))),
+  g: Qual([], tfun(tapp(tref, tv(0)), tapp(tpair, tapp(tref, tv(0)), tv(0)))),
+  s: Qual([], tfun(tv(0), tapp(tref, tv(0)), tapp(tref, tv(0)))),
 
   '?u': Qual([], tfun(tapp(tthunk, tv(0)), tunit, tv(0))),
   '?v': Qual([], tfun(tvoid, tv(0))),

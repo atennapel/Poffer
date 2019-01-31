@@ -1,0 +1,26 @@
+A fx = fx
+B fgx = f(gx)
+C fxy = fyx
+D fgxy = f(gxy)
+E
+F fghx = f(gx)(hx)
+G fghxy = f(gxy)(hxy)
+H
+I x = x
+J
+K xy = x
+L
+M
+N
+O
+P
+Q
+R xy = y
+S fgx = fx(gx)
+T xf = fx
+U
+V
+W fx = fxx
+X
+Y
+Z

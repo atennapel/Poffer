@@ -51,25 +51,30 @@ exports.cDrop = types_1.TCon('Drop', kinds_1.KFun(exports.kType, exports.kConstr
 exports.tv = (id, kind = exports.kType) => types_1.TVar(id, kind);
 exports.initialEnv = {
     I: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(0))),
+    A: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(1))),
     B: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(2))),
     C: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tv(1), exports.tv(0), exports.tv(2))),
+    D: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(2), exports.tv(3)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tv(0), exports.tv(1), exports.tv(3))),
     F: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(1), exports.tv(2), exports.tv(3)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tfun(exports.tv(0), exports.tv(2)), exports.tv(0), exports.tv(3))),
+    G: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0)), types_1.tapp(exports.cDup, exports.tv(1))], exports.tfun(exports.tfun(exports.tv(2), exports.tv(3), exports.tv(4)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(3)), exports.tv(0), exports.tv(1), exports.tv(4))),
     K: types_1.Qual([types_1.tapp(exports.cDrop, exports.tv(1))], exports.tfun(exports.tv(0), exports.tv(1), exports.tv(0))),
+    R: types_1.Qual([types_1.tapp(exports.cDrop, exports.tv(0))], exports.tfun(exports.tv(0), exports.tv(1), exports.tv(1))),
     S: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(2))),
+    T: types_1.Qual([], exports.tfun(exports.tv(0), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(1))),
     W: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(1))),
     Y: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0)), exports.tv(0))),
     u: types_1.Qual([], exports.tunit),
     f: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tv(0))),
     z: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), types_1.tapp(exports.tthunk, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(1)))),
-    P: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(1), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)))),
-    L: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
-    R: types_1.Qual([], exports.tfun(exports.tv(1), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
-    N: types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.tmutarray, exports.tv(0)))),
-    A: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tmutarray, exports.tv(0)), exports.tunit)),
-    O: types_1.Qual([], exports.tfun(types_1.tapp(exports.tmutarray, exports.tv(0)), types_1.tapp(exports.tsum, exports.tunit, exports.tv(0)))),
-    r: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tref, exports.tv(0)))),
-    g: types_1.Qual([], exports.tfun(types_1.tapp(exports.tref, exports.tv(0)), exports.tv(0))),
-    s: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tref, exports.tv(0)), exports.tunit)),
+    p: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(1), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)))),
+    l: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
+    r: types_1.Qual([], exports.tfun(exports.tv(1), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
+    n: types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.tmutarray, exports.tv(0)))),
+    a: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tmutarray, exports.tv(0)), types_1.tapp(exports.tmutarray, exports.tv(0)))),
+    o: types_1.Qual([], exports.tfun(types_1.tapp(exports.tmutarray, exports.tv(0)), types_1.tapp(exports.tpair, types_1.tapp(exports.tmutarray, exports.tv(0)), types_1.tapp(exports.tsum, exports.tunit, exports.tv(0))))),
+    v: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tref, exports.tv(0)))),
+    g: types_1.Qual([], exports.tfun(types_1.tapp(exports.tref, exports.tv(0)), types_1.tapp(exports.tpair, types_1.tapp(exports.tref, exports.tv(0)), exports.tv(0)))),
+    s: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tref, exports.tv(0)), types_1.tapp(exports.tref, exports.tv(0)))),
     '?u': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tunit, exports.tv(0))),
     '?v': types_1.Qual([], exports.tfun(exports.tvoid, exports.tv(0))),
     '?n': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
@@ -430,6 +435,8 @@ const handleDup = (free, type) => {
             return [];
         if (type === env_1.tunit)
             return [];
+        if (type === env_1.tvoid)
+            return [];
         if (type === env_1.tthunk)
             return [];
         if (type === env_1.tpair)
@@ -455,6 +462,8 @@ const handleDrop = (free, type) => {
         if (type === env_1.tnat)
             return [];
         if (type === env_1.tunit)
+            return [];
+        if (type === env_1.tvoid)
             return [];
         if (type === env_1.tthunk)
             return [];
