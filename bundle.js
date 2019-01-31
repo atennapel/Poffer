@@ -443,6 +443,8 @@ const handleDup = (free, type) => {
     if (types_1.isTCon(type)) {
         if (type === env_1.tnat)
             return [];
+        if (type === env_1.tbool)
+            return [];
         if (type === env_1.tunit)
             return [];
         if (type === env_1.tvoid)
@@ -470,6 +472,8 @@ const handleDrop = (free, type) => {
         return free.has(type) ? [types_1.tapp(env_1.cDrop, type)] : [];
     if (types_1.isTCon(type)) {
         if (type === env_1.tnat)
+            return [];
+        if (type === env_1.tbool)
             return [];
         if (type === env_1.tunit)
             return [];
