@@ -42,6 +42,7 @@ exports.initialEnv = {
     Y: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0)), exports.tv(0))),
     u: types_1.Qual([], exports.tunit),
     f: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tv(0))),
+    g: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), types_1.tapp(exports.tthunk, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(1)))),
     s: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
     n: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
     i: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),

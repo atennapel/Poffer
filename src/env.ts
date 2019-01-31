@@ -38,6 +38,7 @@ export const initialEnv: Env = {
   u: Qual([], tunit),
 
   f: Qual([], tfun(tapp(tthunk, tv(0)), tv(0))),
+  g: Qual([], tfun(tfun(tv(0), tv(1)), tapp(tthunk, tv(0)), tapp(tthunk, tv(1)))),
 
   s: Qual([], tfun(tnat, tnat)),
   n: Qual([], tfun(tapp(tthunk, tv(0)), tfun(tnat, tv(0)), tnat, tv(0))),

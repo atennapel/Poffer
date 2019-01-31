@@ -16,6 +16,7 @@ const f = t => {
   }
   return t.val;
 };
+const g = x => t => _thunk(() => x(f(t)));
 
 const s = x => x + 1n;
 const n = z => s => n => n === 0n ? f(z) : s(n - 1n);
