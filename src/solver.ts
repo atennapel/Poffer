@@ -1,6 +1,6 @@
 import { Type, showType, pruneType, isTApp, flattenTApp, isTCon, isTMeta, tapp, tapps, isTVar, Free } from "./types";
 import { tyerr } from "./util";
-import { cDup, cDrop, isTFun, tunit, tnat, tthunk } from "./env";
+import { cDup, cDrop, isTFun, tunit, tnat, tthunk, tsum, tpair, ttype, tFun } from "./env";
 
 const handleDup = (free: Free, type: Type): Type[] => {
   if (isTMeta(type)) return free.has(type) ? [tapp(cDup, type)] : [];
@@ -8,6 +8,10 @@ const handleDup = (free: Free, type: Type): Type[] => {
     if (type === tnat) return [];
     if (type === tunit) return [];
     if (type === tthunk) return [];
+    if (type === tpair) return [];
+    if (type === tsum) return [];
+    if (type === ttype) return [];
+    if (type === tFun) return [];
     return tyerr(`${showType(type)} cannot be duplicated`);
   }
   if (isTFun(type)) return handleDup(free, type.right);
@@ -21,6 +25,10 @@ const handleDrop = (free: Free, type: Type): Type[] => {
     if (type === tnat) return [];
     if (type === tunit) return [];
     if (type === tthunk) return [];
+    if (type === tpair) return [];
+    if (type === tsum) return [];
+    if (type === ttype) return [];
+    if (type === tFun) return [];
     return tyerr(`${showType(type)} cannot be dropped`);
   }
   if (isTFun(type)) return handleDup(free, type.right);

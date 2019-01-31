@@ -1,0 +1,9 @@
+
+
+#rule BI -> I
+#rule CBI -> I
+
+#typerule (Drop Nat)
+#typerule (Drop '0) => Drop (List '0)
+#typerule (Drop '1) => (Drop ('0 -> '1))
+

@@ -3,9 +3,21 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const exprs_1 = require("./exprs");
 const util_1 = require("./util");
+const sigilmarks = {
+    '%': 't',
+    '#': 'm',
+    '?': 'q',
+};
+const compileName = (name) => {
+    const sigils = name.split(/[a-z]+/i)[0];
+    if (!sigils)
+        return name;
+    const sgc = sigils.split('').map(c => sigilmarks[c] || '').join('');
+    return `${sgc}\$${name.slice(sigils.length)}`;
+};
 exports.compile = (expr) => {
     if (exprs_1.isVar(expr))
-        return expr.name;
+        return compileName(expr.name);
     if (exprs_1.isApp(expr))
         return `${exports.compile(expr.left)}(${exports.compile(expr.right)})`;
     if (exprs_1.isNatLit(expr))
@@ -27,9 +39,13 @@ exports.tfun = (...ts) => ts.reduceRight((x, y) => types_1.TApp(types_1.TApp(exp
 exports.isTFun = (type) => types_1.isTApp(type) && types_1.isTApp(type.left) && type.left.left === exports.tFun;
 exports.tnat = types_1.TCon('Nat', exports.kType);
 exports.tunit = types_1.TCon('Unit', exports.kType);
+exports.tvoid = types_1.TCon('Void', exports.kType);
 exports.tthunk = types_1.TCon('Thunk', kinds_1.KFun(exports.kType, exports.kType));
 exports.tpair = types_1.TCon('*', kinds_1.KFun(exports.kType, kinds_1.KFun(exports.kType, exports.kType)));
 exports.tsum = types_1.TCon('+', kinds_1.KFun(exports.kType, kinds_1.KFun(exports.kType, exports.kType)));
+exports.tmutarray = types_1.TCon('MutArray', kinds_1.KFun(exports.kType, exports.kType));
+exports.tref = types_1.TCon('Ref', kinds_1.KFun(exports.kType, exports.kType));
+exports.ttype = types_1.TCon('Type', kinds_1.KFun(exports.kType, exports.kType));
 exports.cDup = types_1.TCon('Dup', kinds_1.KFun(exports.kType, exports.kConstraint));
 exports.cDrop = types_1.TCon('Drop', kinds_1.KFun(exports.kType, exports.kConstraint));
 exports.tv = (id, kind = exports.kType) => types_1.TVar(id, kind);
@@ -37,26 +53,45 @@ exports.initialEnv = {
     I: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(0))),
     B: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(2))),
     C: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tv(1), exports.tv(0), exports.tv(2))),
+    F: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(1), exports.tv(2), exports.tv(3)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tfun(exports.tv(0), exports.tv(2)), exports.tv(0), exports.tv(3))),
     K: types_1.Qual([types_1.tapp(exports.cDrop, exports.tv(1))], exports.tfun(exports.tv(0), exports.tv(1), exports.tv(0))),
+    S: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(2))),
     W: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(1))),
     Y: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0)), exports.tv(0))),
     u: types_1.Qual([], exports.tunit),
     f: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tv(0))),
-    g: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), types_1.tapp(exports.tthunk, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(1)))),
-    s: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
-    n: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
-    i: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
-    r: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
-    a: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
-    b: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
-    m: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
-    d: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    z: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), types_1.tapp(exports.tthunk, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(1)))),
     P: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(1), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)))),
-    F: types_1.Qual([], exports.tfun(types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(0))),
-    S: types_1.Qual([], exports.tfun(types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(1))),
     L: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
     R: types_1.Qual([], exports.tfun(exports.tv(1), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
-    M: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(2)), exports.tfun(exports.tv(1), exports.tv(2)), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)), exports.tv(2))),
+    N: types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.tmutarray, exports.tv(0)))),
+    A: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tmutarray, exports.tv(0)), exports.tunit)),
+    O: types_1.Qual([], exports.tfun(types_1.tapp(exports.tmutarray, exports.tv(0)), types_1.tapp(exports.tsum, exports.tunit, exports.tv(0)))),
+    r: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tref, exports.tv(0)))),
+    g: types_1.Qual([], exports.tfun(types_1.tapp(exports.tref, exports.tv(0)), exports.tv(0))),
+    s: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tref, exports.tv(0)), exports.tunit)),
+    '?u': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tunit, exports.tv(0))),
+    '?v': types_1.Qual([], exports.tfun(exports.tvoid, exports.tv(0))),
+    '?n': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
+    '?p': types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(2))),
+    '?s': types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(2)), exports.tfun(exports.tv(1), exports.tv(2)), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)), exports.tv(2))),
+    '#s': types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
+    '#i': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
+    '#r': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
+    '#a': types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    '#b': types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    '#m': types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    '#d': types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    '%u': types_1.Qual([], types_1.tapp(exports.ttype, exports.tunit)),
+    '%v': types_1.Qual([], types_1.tapp(exports.ttype, exports.tvoid)),
+    '%n': types_1.Qual([], types_1.tapp(exports.ttype, exports.tnat)),
+    '%p': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, exports.tv(1)), types_1.tapp(exports.ttype, types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1))))),
+    '%f': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, exports.tv(1)), types_1.tapp(exports.ttype, types_1.tapp(exports.tFun, exports.tv(0), exports.tv(1))))),
+    '%s': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, exports.tv(1)), types_1.tapp(exports.ttype, types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1))))),
+    '%t': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, types_1.tapp(exports.tthunk, exports.tv(0))))),
+    '%m': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, types_1.tapp(exports.tmutarray, exports.tv(0))))),
+    '%r': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, types_1.tapp(exports.tref, exports.tv(0))))),
+    '%T': types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tsum, exports.tunit, types_1.tapp(exports.ttype, exports.tv(0))))),
 };
 
 },{"./kinds":5,"./types":9}],3:[function(require,module,exports){
@@ -211,9 +246,9 @@ const TkNumber = (val) => ({ tag: 'TkNumber', val });
 const isTkNumber = (token) => token.tag === 'TkNumber';
 const TkString = (val) => ({ tag: 'TkString', val });
 const isTkString = (token) => token.tag === 'TkString';
-const TkParen = (tokens) => ({ tag: 'TkParen', tokens });
+const TkParen = (tokens, sigils) => ({ tag: 'TkParen', tokens, sigils });
 const isTkParen = (token) => token.tag === 'TkParen';
-const TkCurly = (tokens) => ({ tag: 'TkCurly', tokens });
+const TkCurly = (tokens, sigils) => ({ tag: 'TkCurly', tokens, sigils });
 const isTkCurly = (token) => token.tag === 'TkCurly';
 const matchingBracket = (c) => {
     if (c === '(')
@@ -226,6 +261,7 @@ const matchingBracket = (c) => {
         return '{';
     return err(`invalid bracket: ${c}`);
 };
+const sigils = '#%?';
 const START = 0;
 const NUM = 1;
 const STR = 2;
@@ -233,30 +269,34 @@ const tokenize = (s) => {
     let state = START;
     let t = '';
     let r = [], p = [], b = [], esc = false;
+    let sg = '';
     for (let i = 0; i <= s.length; i++) {
         const c = s[i] || ' ';
         const next = s[i + 1] || ' ';
         // console.log(i, c, state, t, esc);
         if (state === START) {
-            if (/[a-z]/i.test(c))
-                r.push(TkName(c));
+            if (sigils.indexOf(c) >= 0)
+                sg += c;
+            else if (/[a-z]/i.test(c))
+                r.push(TkName(sg + c)), sg = '';
             else if (/[0-9]/.test(c))
                 t += c, state = NUM;
             else if (c === '"')
                 state = STR;
             else if (c === '(' || c === '{')
-                b.push(c), p.push(r), r = [];
+                b.push({ br: c, sg }), sg = '', p.push(r), r = [];
             else if (c === ')' || c === '}') {
                 if (b.length === 0)
                     return err(`unmatched bracket: ${c}`);
-                const br = b.pop();
+                const brf = b.pop();
+                const br = brf.br;
                 if (matchingBracket(br) !== c)
                     return err(`unmatched bracket: ${br} and ${c}`);
                 const a = p.pop();
                 if (br === '(')
-                    a.push(TkParen(r));
+                    a.push(TkParen(r, brf.sg));
                 else if (br === '{')
-                    a.push(TkCurly(r));
+                    a.push(TkCurly(r, brf.sg));
                 r = a;
             }
             else if (/\s+/.test(c))
@@ -266,7 +306,7 @@ const tokenize = (s) => {
         }
         else if (state === NUM) {
             if (!/[0-9\.]/.test(c))
-                r.push(TkNumber(t)), t = '', i--, state = START;
+                r.push(sg ? TkName(sg + t) : TkNumber(t)), sg = '', t = '', i--, state = START;
             else
                 t += c;
         }
@@ -278,34 +318,36 @@ const tokenize = (s) => {
             else if (c === '\\')
                 esc = true;
             else if (c === '"')
-                r.push(TkString(t)), t = '', state = START;
+                r.push(TkString(t)), sg = '', t = '', state = START;
             else
                 t += c;
         }
     }
     if (b.length > 0)
-        return err(`unclosed brackets: ${b.join(' ')}`);
+        return err(`unclosed brackets: ${b.map(x => x.br).join(' ')}`);
     if (state === STR)
         return err('unclosed string');
     if (state !== START)
         return err(`invalid parsing end state: ${state}`);
+    if (sg)
+        return err(`sigils ${sg} before whitespace`);
     return r;
 };
-const parseToken = (t) => {
+const parseToken = (t, sg) => {
     if (isTkName(t))
-        return exprs_1.Var(t.name);
+        return exprs_1.Var(sg + t.name);
     if (isTkNumber(t))
-        return exprs_1.NatLit(t.val);
+        return sg ? exprs_1.Var(sg + t.val) : exprs_1.NatLit(t.val);
     if (isTkParen(t))
-        return parseParen(t.tokens);
+        return parseParen(t.tokens, t.sigils);
     if (isTkCurly(t))
-        return exprs_1.Thunk(parseParen(t.tokens));
+        return exprs_1.Thunk(parseParen(t.tokens, t.sigils));
     return err(`invalid token: ${t.tag}`);
 };
-const parseParen = (ts) => ts.length === 0 ? exprs_1.Var('u') :
-    ts.length === 1 ? parseToken(ts[0]) :
-        ts.map(parseToken).reduce(exprs_1.App);
-exports.parse = (s) => parseParen(tokenize(s));
+const parseParen = (ts, sg) => ts.length === 0 ? exprs_1.Var(sg + 'u') :
+    ts.length === 1 ? parseToken(ts[0], sg) :
+        ts.map(x => parseToken(x, sg)).reduce(exprs_1.App);
+exports.parse = (s) => parseParen(tokenize(s), '');
 
 },{"./exprs":3}],7:[function(require,module,exports){
 "use strict";
@@ -327,6 +369,14 @@ function _show(x) {
             if (x.forced)
                 return `Thunk(${_show(x.val)})`;
             return `Thunk(...)`;
+        }
+        if (x._tag === 'Type') {
+            if (!x.args || x.args.length === 0)
+                return x.name;
+            const sargs = x.args.map(_show);
+            if (/[^a-z]/i.test(x.name) && sargs.length >= 2)
+                return `(${sargs[0]} ${x.name} ${sargs.slice(1).join(' ')})`;
+            return `(${x.name} ${sargs.join(' ')})`;
         }
         return typeof x.val === 'undefined' ? x._tag :
             Array.isArray(x.val) ? `(${x._tag} ${x.val.map(_show).join(' ')})` :
@@ -382,6 +432,14 @@ const handleDup = (free, type) => {
             return [];
         if (type === env_1.tthunk)
             return [];
+        if (type === env_1.tpair)
+            return [];
+        if (type === env_1.tsum)
+            return [];
+        if (type === env_1.ttype)
+            return [];
+        if (type === env_1.tFun)
+            return [];
         return util_1.tyerr(`${types_1.showType(type)} cannot be duplicated`);
     }
     if (env_1.isTFun(type))
@@ -399,6 +457,14 @@ const handleDrop = (free, type) => {
         if (type === env_1.tunit)
             return [];
         if (type === env_1.tthunk)
+            return [];
+        if (type === env_1.tpair)
+            return [];
+        if (type === env_1.tsum)
+            return [];
+        if (type === env_1.ttype)
+            return [];
+        if (type === env_1.tFun)
             return [];
         return util_1.tyerr(`${types_1.showType(type)} cannot be dropped`);
     }

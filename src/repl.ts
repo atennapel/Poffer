@@ -15,6 +15,13 @@ function _show(x: any): string {
       if (x.forced) return `Thunk(${_show(x.val)})`;
       return `Thunk(...)`;
     }
+    if (x._tag === 'Type') {
+      if (!x.args || x.args.length === 0) return x.name;
+      const sargs = x.args.map(_show);
+      if (/[^a-z]/i.test(x.name) && sargs.length >= 2)
+        return `(${sargs[0]} ${x.name} ${sargs.slice(1).join(' ')})`;
+      return `(${x.name} ${sargs.join(' ')})`;
+    }
     return typeof x.val === 'undefined' ? x._tag :
       Array.isArray(x.val) ? `(${x._tag} ${x.val.map(_show).join(' ')})` :
       `(${x._tag} ${_show(x.val)})`;
