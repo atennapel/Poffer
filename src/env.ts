@@ -14,6 +14,7 @@ export const isTFun = (type: Type): type is TApp & TFunLike =>
   isTApp(type) && isTApp(type.left) && type.left.left === tFun;
 
 export const tnat = TCon('Nat', kType);
+export const tbool = TCon('Bool', kType);
 export const tunit = TCon('Unit', kType);
 export const tvoid = TCon('Void', kType);
 
@@ -33,14 +34,27 @@ export const cDrop = TCon('Drop', KFun(kType, kConstraint));
 export type Env = { [key: string]: Qual };
 export const tv = (id: number, kind: Kind = kType) => TVar(id, kind);
 export const initialEnv: Env = {
-  I: Qual([], tfun(tv(0), tv(0))),
   A: Qual([], tfun(tfun(tv(0), tv(1)), tv(0), tv(1))),
   B: Qual([], tfun(tfun(tv(1), tv(2)), tfun(tv(0), tv(1)), tv(0), tv(2))),
   C: Qual([], tfun(tfun(tv(0), tv(1), tv(2)), tv(1), tv(0), tv(2))),
   D: Qual([], tfun(tfun(tv(2), tv(3)), tfun(tv(0), tv(1), tv(2)), tv(0), tv(1), tv(3))),
+  E: Qual([], tfun(tfun(tv(3), tv(4)), tfun(tv(0), tv(1), tv(2), tv(3)), tv(0), tv(1), tv(2), tv(4))),
   F: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(1), tv(2), tv(3)), tfun(tv(0), tv(1)), tfun(tv(0), tv(2)), tv(0), tv(3))),
   G: Qual([tapp(cDup, tv(0)), tapp(cDup, tv(1))], tfun(tfun(tv(2), tv(3), tv(4)), tfun(tv(0), tv(1), tv(2)), tfun(tv(0), tv(1), tv(3)), tv(0), tv(1), tv(4))),
+  H: Qual([tapp(cDup, tv(0)), tapp(cDup, tv(1)), tapp(cDup, tv(2))],
+    tfun(
+      tfun(tv(3), tv(4), tv(5), tv(6)),
+      tfun(tv(0), tv(1), tv(2), tv(3)),
+      tfun(tv(0), tv(1), tv(2), tv(4)),
+      tfun(tv(0), tv(1), tv(2), tv(5)),
+      tv(0),
+      tv(1),
+      tv(2),
+      tv(6))),
+  I: Qual([], tfun(tv(0), tv(0))),
   K: Qual([tapp(cDrop, tv(1))], tfun(tv(0), tv(1), tv(0))),
+  L: Qual([], tfun(tfun(tv(2), tv(3), tv(4)), tfun(tv(0), tv(2)), tfun(tv(1), tv(3)), tv(0), tv(1), tv(4))),
+  M: Qual([], tfun(tfun(tv(3), tv(4), tv(5), tv(6)), tfun(tv(0), tv(3)), tfun(tv(1), tv(4)), tfun(tv(2), tv(5)), tv(0), tv(1), tv(2), tv(6))),
   R: Qual([tapp(cDrop, tv(0))], tfun(tv(0), tv(1), tv(1))),
   S: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(0), tv(1), tv(2)), tfun(tv(0), tv(1)), tv(0), tv(2))),
   T: Qual([], tfun(tv(0), tfun(tv(0), tv(1)), tv(1))),
@@ -49,7 +63,11 @@ export const initialEnv: Env = {
 
   u: Qual([], tunit),
 
-  f: Qual([], tfun(tapp(tthunk, tv(0)), tv(0))),
+  t: Qual([], tbool),
+  f: Qual([], tbool),
+
+  x: Qual([], tfun(tapp(tthunk, tv(0)), tv(0))),
+  y: Qual([], tfun(tfun(tunit, tv(0)), tapp(tthunk, tv(0)))),
   z: Qual([], tfun(tfun(tv(0), tv(1)), tapp(tthunk, tv(0)), tapp(tthunk, tv(1)))),
 
   p: Qual([], tfun(tv(0), tv(1), tapp(tpair, tv(0), tv(1)))),
@@ -67,6 +85,7 @@ export const initialEnv: Env = {
   '?u': Qual([], tfun(tapp(tthunk, tv(0)), tunit, tv(0))),
   '?v': Qual([], tfun(tvoid, tv(0))),
   '?n': Qual([], tfun(tapp(tthunk, tv(0)), tfun(tnat, tv(0)), tnat, tv(0))),
+  '?b': Qual([], tfun(tapp(tthunk, tv(0)), tapp(tthunk, tv(0)), tbool, tv(0))),
   '?p': Qual([], tfun(tfun(tv(0), tv(1), tv(2)), tapp(tpair, tv(0), tv(1)), tv(2))),
   '?s': Qual([], tfun(tfun(tv(0), tv(2)), tfun(tv(1), tv(2)), tapp(tsum, tv(0), tv(1)), tv(2))),
 
@@ -81,6 +100,7 @@ export const initialEnv: Env = {
   '%u': Qual([], tapp(ttype, tunit)),
   '%v': Qual([], tapp(ttype, tvoid)),
   '%n': Qual([], tapp(ttype, tnat)),
+  '%b': Qual([], tapp(ttype, tbool)),
   '%p': Qual([], tfun(tapp(ttype, tv(0)), tapp(ttype, tv(1)), tapp(ttype, tapp(tpair, tv(0), tv(1))))),
   '%f': Qual([], tfun(tapp(ttype, tv(0)), tapp(ttype, tv(1)), tapp(ttype, tapp(tFun, tv(0), tv(1))))),
   '%s': Qual([], tfun(tapp(ttype, tv(0)), tapp(ttype, tv(1)), tapp(ttype, tapp(tsum, tv(0), tv(1))))),

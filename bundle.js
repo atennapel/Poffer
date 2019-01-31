@@ -38,6 +38,7 @@ exports.tFun = types_1.TCon('->', kinds_1.KFun(exports.kType, kinds_1.KFun(expor
 exports.tfun = (...ts) => ts.reduceRight((x, y) => types_1.TApp(types_1.TApp(exports.tFun, y), x));
 exports.isTFun = (type) => types_1.isTApp(type) && types_1.isTApp(type.left) && type.left.left === exports.tFun;
 exports.tnat = types_1.TCon('Nat', exports.kType);
+exports.tbool = types_1.TCon('Bool', exports.kType);
 exports.tunit = types_1.TCon('Unit', exports.kType);
 exports.tvoid = types_1.TCon('Void', exports.kType);
 exports.tthunk = types_1.TCon('Thunk', kinds_1.KFun(exports.kType, exports.kType));
@@ -50,21 +51,28 @@ exports.cDup = types_1.TCon('Dup', kinds_1.KFun(exports.kType, exports.kConstrai
 exports.cDrop = types_1.TCon('Drop', kinds_1.KFun(exports.kType, exports.kConstraint));
 exports.tv = (id, kind = exports.kType) => types_1.TVar(id, kind);
 exports.initialEnv = {
-    I: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(0))),
     A: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(1))),
     B: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(2))),
     C: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tv(1), exports.tv(0), exports.tv(2))),
     D: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(2), exports.tv(3)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tv(0), exports.tv(1), exports.tv(3))),
+    E: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(3), exports.tv(4)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(3)), exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(4))),
     F: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(1), exports.tv(2), exports.tv(3)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tfun(exports.tv(0), exports.tv(2)), exports.tv(0), exports.tv(3))),
     G: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0)), types_1.tapp(exports.cDup, exports.tv(1))], exports.tfun(exports.tfun(exports.tv(2), exports.tv(3), exports.tv(4)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(3)), exports.tv(0), exports.tv(1), exports.tv(4))),
+    H: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0)), types_1.tapp(exports.cDup, exports.tv(1)), types_1.tapp(exports.cDup, exports.tv(2))], exports.tfun(exports.tfun(exports.tv(3), exports.tv(4), exports.tv(5), exports.tv(6)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(3)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(4)), exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(5)), exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(6))),
+    I: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(0))),
     K: types_1.Qual([types_1.tapp(exports.cDrop, exports.tv(1))], exports.tfun(exports.tv(0), exports.tv(1), exports.tv(0))),
+    L: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(2), exports.tv(3), exports.tv(4)), exports.tfun(exports.tv(0), exports.tv(2)), exports.tfun(exports.tv(1), exports.tv(3)), exports.tv(0), exports.tv(1), exports.tv(4))),
+    M: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(3), exports.tv(4), exports.tv(5), exports.tv(6)), exports.tfun(exports.tv(0), exports.tv(3)), exports.tfun(exports.tv(1), exports.tv(4)), exports.tfun(exports.tv(2), exports.tv(5)), exports.tv(0), exports.tv(1), exports.tv(2), exports.tv(6))),
     R: types_1.Qual([types_1.tapp(exports.cDrop, exports.tv(0))], exports.tfun(exports.tv(0), exports.tv(1), exports.tv(1))),
     S: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(2))),
     T: types_1.Qual([], exports.tfun(exports.tv(0), exports.tfun(exports.tv(0), exports.tv(1)), exports.tv(1))),
     W: types_1.Qual([types_1.tapp(exports.cDup, exports.tv(0))], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0), exports.tv(1)), exports.tv(0), exports.tv(1))),
     Y: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(0)), exports.tv(0))),
     u: types_1.Qual([], exports.tunit),
-    f: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tv(0))),
+    t: types_1.Qual([], exports.tbool),
+    f: types_1.Qual([], exports.tbool),
+    x: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tv(0))),
+    y: types_1.Qual([], exports.tfun(exports.tfun(exports.tunit, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(0)))),
     z: types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1)), types_1.tapp(exports.tthunk, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(1)))),
     p: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(1), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)))),
     l: types_1.Qual([], exports.tfun(exports.tv(0), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)))),
@@ -78,6 +86,7 @@ exports.initialEnv = {
     '?u': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tunit, exports.tv(0))),
     '?v': types_1.Qual([], exports.tfun(exports.tvoid, exports.tv(0))),
     '?n': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
+    '?b': types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), types_1.tapp(exports.tthunk, exports.tv(0)), exports.tbool, exports.tv(0))),
     '?p': types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(1), exports.tv(2)), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(2))),
     '?s': types_1.Qual([], exports.tfun(exports.tfun(exports.tv(0), exports.tv(2)), exports.tfun(exports.tv(1), exports.tv(2)), types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1)), exports.tv(2))),
     '#s': types_1.Qual([], exports.tfun(exports.tnat, exports.tnat)),
@@ -90,6 +99,7 @@ exports.initialEnv = {
     '%u': types_1.Qual([], types_1.tapp(exports.ttype, exports.tunit)),
     '%v': types_1.Qual([], types_1.tapp(exports.ttype, exports.tvoid)),
     '%n': types_1.Qual([], types_1.tapp(exports.ttype, exports.tnat)),
+    '%b': types_1.Qual([], types_1.tapp(exports.ttype, exports.tbool)),
     '%p': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, exports.tv(1)), types_1.tapp(exports.ttype, types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1))))),
     '%f': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, exports.tv(1)), types_1.tapp(exports.ttype, types_1.tapp(exports.tFun, exports.tv(0), exports.tv(1))))),
     '%s': types_1.Qual([], exports.tfun(types_1.tapp(exports.ttype, exports.tv(0)), types_1.tapp(exports.ttype, exports.tv(1)), types_1.tapp(exports.ttype, types_1.tapp(exports.tsum, exports.tv(0), exports.tv(1))))),

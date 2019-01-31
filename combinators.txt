@@ -2,15 +2,15 @@ A fx = fx
 B fgx = f(gx)
 C fxy = fyx
 D fgxy = f(gxy)
-E
+E fgxyz = f(gxyz)
 F fghx = f(gx)(hx)
 G fghxy = f(gxy)(hxy)
-H
+H fghxyz = f(gxyz)(hxyz)
 I x = x
 J
 K xy = x
-L
-M
+L fghxy = f(gx)(hy)
+M fghixyz = f(gx)(hy)(iz)
 N
 O
 P
@@ -22,5 +22,5 @@ U
 V
 W fx = fxx
 X
-Y
+Y y-combinator
 Z
