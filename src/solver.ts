@@ -1,12 +1,13 @@
 import { Type, showType, pruneType, isTApp, flattenTApp, isTCon, isTMeta, tapp, tapps, isTVar, Free } from "./types";
 import { tyerr } from "./util";
-import { cDup, cDrop, isTFun, tunit, tnat, tthunk, tsum, tpair, ttype, tFun } from "./env";
+import { cDup, cDrop, isTFun, tunit, tnat, tthunk, tsum, tpair, ttype, tFun, tvoid } from "./env";
 
 const handleDup = (free: Free, type: Type): Type[] => {
   if (isTMeta(type)) return free.has(type) ? [tapp(cDup, type)] : [];
   if (isTCon(type)) {
     if (type === tnat) return [];
     if (type === tunit) return [];
+    if (type === tvoid) return [];
     if (type === tthunk) return [];
     if (type === tpair) return [];
     if (type === tsum) return [];
@@ -24,6 +25,7 @@ const handleDrop = (free: Free, type: Type): Type[] => {
   if (isTCon(type)) {
     if (type === tnat) return [];
     if (type === tunit) return [];
+    if (type === tvoid) return [];
     if (type === tthunk) return [];
     if (type === tpair) return [];
     if (type === tsum) return [];

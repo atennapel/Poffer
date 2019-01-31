@@ -5,7 +5,6 @@ const F = f => g => h => x => f(g(x))(h(x));
 const K = x => y => x;
 const S = f => g => x => f(x)(g(x));
 const W = f => x => f(x)(x);
-
 const Y = f => (x => f(y => x(x)(y)))(x => f(y => x(x)(y)));
 
 const u = { _tag: 'Unit' };

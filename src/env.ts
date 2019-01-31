@@ -40,7 +40,6 @@ export const initialEnv: Env = {
   K: Qual([tapp(cDrop, tv(1))], tfun(tv(0), tv(1), tv(0))),
   S: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(0), tv(1), tv(2)), tfun(tv(0), tv(1)), tv(0), tv(2))),
   W: Qual([tapp(cDup, tv(0))], tfun(tfun(tv(0), tv(0), tv(1)), tv(0), tv(1))),
-
   Y: Qual([], tfun(tfun(tv(0), tv(0)), tv(0))),
 
   u: Qual([], tunit),
