@@ -10,6 +10,8 @@ exports.compile = (expr) => {
         return `${exports.compile(expr.left)}(${exports.compile(expr.right)})`;
     if (exprs_1.isNatLit(expr))
         return `${expr.val}n`;
+    if (exprs_1.isThunk(expr))
+        return `(_ => ${exports.compile(expr.expr)})`;
     return util_1.impossible('compile');
 };
 
@@ -51,6 +53,8 @@ exports.isApp = (expr) => expr.tag === 'App';
 exports.app = (...expr) => expr.reduce(exports.App);
 exports.NatLit = (val) => ({ tag: 'NatLit', val });
 exports.isNatLit = (expr) => expr.tag === 'NatLit';
+exports.Thunk = (expr) => ({ tag: 'Thunk', expr });
+exports.isThunk = (expr) => expr.tag === 'Thunk';
 exports.showExpr = (expr) => {
     if (exports.isVar(expr))
         return expr.name;
@@ -58,6 +62,8 @@ exports.showExpr = (expr) => {
         return `(${exports.showExpr(expr.left)} ${exports.showExpr(expr.right)})`;
     if (exports.isNatLit(expr))
         return expr.val;
+    if (exports.isThunk(expr))
+        return `{${exports.showExpr(expr.expr)}}`;
     return util_1.impossible('showExpr');
 };
 
@@ -119,6 +125,10 @@ const synth = (env, expr) => {
     }
     if (exprs_1.isNatLit(expr))
         return [[], env_1.tnat];
+    if (exprs_1.isThunk(expr)) {
+        const [cs, ty] = synth(env, expr.expr);
+        return [cs, env_1.tfun(types_1.freshTMeta(env_1.kType), ty)];
+    }
     return util_1.impossible('synth');
 };
 exports.infer = (env, expr) => {
@@ -186,11 +196,17 @@ const TkString = (val) => ({ tag: 'TkString', val });
 const isTkString = (token) => token.tag === 'TkString';
 const TkParen = (tokens) => ({ tag: 'TkParen', tokens });
 const isTkParen = (token) => token.tag === 'TkParen';
+const TkCurly = (tokens) => ({ tag: 'TkCurly', tokens });
+const isTkCurly = (token) => token.tag === 'TkCurly';
 const matchingBracket = (c) => {
     if (c === '(')
         return ')';
     if (c === ')')
         return '(';
+    if (c === '{')
+        return '}';
+    if (c === '}')
+        return '{';
     return err(`invalid bracket: ${c}`);
 };
 const START = 0;
@@ -211,16 +227,19 @@ const tokenize = (s) => {
                 t += c, state = NUM;
             else if (c === '"')
                 state = STR;
-            else if (c === '(')
+            else if (c === '(' || c === '{')
                 b.push(c), p.push(r), r = [];
-            else if (c === ')') {
+            else if (c === ')' || c === '}') {
                 if (b.length === 0)
                     return err(`unmatched bracket: ${c}`);
                 const br = b.pop();
                 if (matchingBracket(br) !== c)
                     return err(`unmatched bracket: ${br} and ${c}`);
                 const a = p.pop();
-                a.push(TkParen(r));
+                if (br === '(')
+                    a.push(TkParen(r));
+                else if (br === '{')
+                    a.push(TkCurly(r));
                 r = a;
             }
             else if (/\s+/.test(c))
@@ -262,6 +281,8 @@ const parseToken = (t) => {
         return exprs_1.NatLit(t.val);
     if (isTkParen(t))
         return parseParen(t.tokens);
+    if (isTkCurly(t))
+        return exprs_1.Thunk(parseParen(t.tokens));
     return err(`invalid token: ${t.tag}`);
 };
 const parseParen = (ts) => ts.length === 0 ? exprs_1.Var('u') :

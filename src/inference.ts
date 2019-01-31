@@ -1,6 +1,6 @@
 import { Env, kType, tfun, kConstraint, tnat } from "./env";
 import { Type, TMeta, isTVar, isTApp, isTMeta, TApp, freshTMeta, TVar, pruneType, Qual, showType, freeTMeta, resetTypeId } from "./types";
-import { Expr, isVar, isApp, isNatLit } from "./exprs";
+import { Expr, isVar, isApp, isNatLit, isThunk } from "./exprs";
 import { tyerr, impossible } from "./util";
 import { unifyType, unifyKind, checkKind } from "./unification";
 import { solve } from "./solver";
@@ -54,6 +54,10 @@ const synth = (env: Env, expr: Expr): [Type[], Type] => {
     return [combine(cs1, cs2), pruneType(tr)];
   }
   if (isNatLit(expr)) return [[], tnat];
+  if (isThunk(expr)) {
+    const [cs, ty] = synth(env, expr.expr);
+    return [cs, tfun(freshTMeta(kType), ty)];
+  }
   return impossible('synth');
 };
 

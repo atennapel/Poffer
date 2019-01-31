@@ -1,6 +1,6 @@
 import { impossible } from "./util";
 
-export type Expr = Var | App | NatLit;
+export type Expr = Var | App | NatLit | Thunk;
 
 export interface Var {
   readonly tag: 'Var';
@@ -25,9 +25,17 @@ export interface NatLit {
 export const NatLit = (val: string): NatLit => ({ tag: 'NatLit', val });
 export const isNatLit = (expr: Expr): expr is NatLit => expr.tag === 'NatLit';
 
+export interface Thunk {
+  readonly tag: 'Thunk';
+  readonly expr: Expr;
+}
+export const Thunk = (expr: Expr): Thunk => ({ tag: 'Thunk', expr });
+export const isThunk = (expr: Expr): expr is Thunk => expr.tag === 'Thunk';
+
 export const showExpr = (expr: Expr): string => {
   if (isVar(expr)) return expr.name;
   if (isApp(expr)) return `(${showExpr(expr.left)} ${showExpr(expr.right)})`;
   if (isNatLit(expr)) return expr.val;
+  if (isThunk(expr)) return `{${showExpr(expr.expr)}}`;
   return impossible('showExpr');
 };

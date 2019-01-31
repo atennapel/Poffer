@@ -1,10 +1,10 @@
-import { Expr, Var, App, NatLit } from "./exprs";
+import { Expr, Var, App, NatLit, Thunk } from "./exprs";
 
 const err = (msg: string) => {
   throw new SyntaxError(msg);
 };
 
-type Token = TkName | TkNumber | TkParen | TkString;
+type Token = TkName | TkNumber | TkParen | TkString | TkCurly;
 
 interface TkName {
   readonly tag: 'TkName';
@@ -34,10 +34,19 @@ interface TkParen {
 const TkParen = (tokens: Token[]): TkParen => ({ tag: 'TkParen', tokens });
 const isTkParen = (token: Token): token is TkParen => token.tag === 'TkParen';
 
-type Bracket = '(' | ')';
+interface TkCurly {
+  readonly tag: 'TkCurly';
+  readonly tokens: Token[];
+}
+const TkCurly = (tokens: Token[]): TkCurly => ({ tag: 'TkCurly', tokens });
+const isTkCurly = (token: Token): token is TkCurly => token.tag === 'TkCurly';
+
+type Bracket = '(' | ')' | '{' | '}';
 const matchingBracket = (c: Bracket): Bracket => {
-  if(c === '(') return ')';
-  if(c === ')') return '(';
+  if (c === '(') return ')';
+  if (c === ')') return '(';
+  if (c === '{') return '}';
+  if (c === '}') return '{';
   return err(`invalid bracket: ${c}`);
 }
 
@@ -56,13 +65,14 @@ const tokenize = (s: string): Token[] => {
       if (/[a-z]/i.test(c)) r.push(TkName(c));
       else if (/[0-9]/.test(c)) t += c, state = NUM;
       else if(c === '"') state = STR;
-      else if(c === '(') b.push(c), p.push(r), r = [];
-      else if(c === ')') {
+      else if(c === '(' || c === '{') b.push(c), p.push(r), r = [];
+      else if(c === ')' || c === '}') {
         if(b.length === 0) return err(`unmatched bracket: ${c}`);
         const br = b.pop() as Bracket;
         if(matchingBracket(br) !== c) return err(`unmatched bracket: ${br} and ${c}`);
         const a: Token[] = p.pop() as Token[];
-        a.push(TkParen(r));
+        if (br === '(') a.push(TkParen(r));
+        else if (br === '{') a.push(TkCurly(r));
         r = a;
       } else if(/\s+/.test(c)) continue;
       else return err(`invalid char: ${c}`);
@@ -86,6 +96,7 @@ const parseToken = (t: Token): Expr => {
   if (isTkName(t)) return Var(t.name);
   if (isTkNumber(t)) return NatLit(t.val);
   if (isTkParen(t)) return parseParen(t.tokens);
+  if (isTkCurly(t)) return Thunk(parseParen(t.tokens));
   return err(`invalid token: ${t.tag}`);
 };
 
