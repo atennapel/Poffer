@@ -33,13 +33,15 @@ export default function _run(_i: string, cb: (output: string, err?: boolean) => 
     console.log(_i);
     const _p = parse(_i);
     console.log(showExpr(_p));
-    const time = Date.now();
+    let time = Date.now();
     const result = infer(_env, _p);
     console.log(`${Date.now() - time}ms`);
     console.log(`${showQual(result)}`);
     const _c = compile(_p);
     console.log(_c);
+    time = Date.now();
     const res = eval(_c);
+    console.log(`${Date.now() - time}ms`);
     cb(`${_show(res)} : ${showQual(result)}`);
   } catch(e) {
     console.log(e);

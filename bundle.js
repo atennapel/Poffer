@@ -46,6 +46,10 @@ exports.initialEnv = {
     n: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0)), exports.tnat, exports.tv(0))),
     i: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
     r: types_1.Qual([], exports.tfun(types_1.tapp(exports.tthunk, exports.tv(0)), exports.tfun(exports.tnat, exports.tv(0), exports.tv(0)), exports.tnat, exports.tv(0))),
+    a: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    b: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    m: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
+    d: types_1.Qual([], exports.tfun(exports.tnat, exports.tnat, exports.tnat)),
     P: types_1.Qual([], exports.tfun(exports.tv(0), exports.tv(1), types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)))),
     F: types_1.Qual([], exports.tfun(types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(0))),
     S: types_1.Qual([], exports.tfun(types_1.tapp(exports.tpair, exports.tv(0), exports.tv(1)), exports.tv(1))),
@@ -343,13 +347,15 @@ function _run(_i, cb) {
         console.log(_i);
         const _p = parser_1.parse(_i);
         console.log(exprs_1.showExpr(_p));
-        const time = Date.now();
+        let time = Date.now();
         const result = inference_1.infer(_env, _p);
         console.log(`${Date.now() - time}ms`);
         console.log(`${types_1.showQual(result)}`);
         const _c = compiler_1.compile(_p);
         console.log(_c);
+        time = Date.now();
         const res = eval(_c);
+        console.log(`${Date.now() - time}ms`);
         cb(`${_show(res)} : ${types_1.showQual(result)}`);
     }
     catch (e) {

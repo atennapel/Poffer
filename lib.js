@@ -38,6 +38,11 @@ const r = z => s => n => {
   return x;
 };
 
+const a = x => y => x + y;
+const b = x => y => x > y ? x - y : 0;
+const m = x => y => x * y;
+const d = x => y => x / y;
+
 const P = x => y => [x, y];
 const F = p => p[0];
 const S = p => p[1];
